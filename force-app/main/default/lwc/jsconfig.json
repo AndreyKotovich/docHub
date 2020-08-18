@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "baseUrl": ".",
+        "paths": {
+            "c/docHubConnections": [
+                "docHubConnections/docHubConnections.js"
+            ],
+            "c/draggableItem": [
+                "draggableItem/draggableItem.js"
+            ],
+            "c/publishActionLWC": [
+                "publishActionLWC/publishActionLWC.js"
+            ],
+            "c/draggableItemLink": [
+                "draggableItemLink/draggableItemLink.js"
+            ],
+            "c/draggableList": [
+                "draggableList/draggableList.js"
+            ]
+        }
+    },
+    "include": [
+        "**/*",
+        "../../../../.sfdx/typings/lwc/**/*.d.ts"
+    ],
+    "typeAcquisition": {
+        "include": [
+            "jest"
+        ]
+    }
+}

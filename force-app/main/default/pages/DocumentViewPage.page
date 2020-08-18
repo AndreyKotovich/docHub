@@ -1,0 +1,4 @@
+<apex:page controller="DocumentViewPageController">
+    <apex:pageMessages />
+    <iframe src="{!URLFOR($Resource.pdfjs, '/web/viewer.html')}?file={!fileLink}"  style=" width: 100vw;height: 100vh;border: none;"/>
+</apex:page>
