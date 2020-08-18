@@ -1,0 +1,30 @@
+<template>
+	<template if:true={title}>
+		<h1>{title}</h1>
+	</template>
+
+	<div class="slds-grid slds-gutters slds-p-bottom_small">
+		<div class="slds-col slds-size_1-of-2 slds-text-heading_medium slds-text-align_center">Unlinked</div>
+		<div class="slds-col slds-size_1-of-2 slds-text-heading_medium slds-text-align_center">Linked</div>
+	</div>
+	<div class="slds-grid slds-gutters">
+		<div class="slds-col slds-box slds-theme_default list" data-id="unlinked">
+			<template for:each={items} for:item="item" for:index="idx">
+				<div class="c-draggable" key={item.name} draggable="true" ondragstart={startDrag} ondragover={allowDrop}
+					ondrop={dropItem} ondragleave={dragLeave} ondragend={dragEnd}>
+					<c-draggable-item key={item.name} item={item} index={idx} oneditbutton={handleEditButton}></c-draggable-item>
+				</div>
+			</template>
+		</div>
+
+		<div class="slds-col slds-box slds-theme_default list" data-id="linked">
+			<template for:each={items2} for:item="item" for:index="idx">
+				<div class="c-draggable" key={item.name} draggable="true" ondragstart={startDrag} ondragover={allowDrop}
+					ondrop={dropItem} ondragleave={dragLeave} ondragend={dragEnd}>
+					<c-draggable-item-link key={item.name} item={item} index={idx} oneditbutton={handleEditButton}></c-draggable-item-link>
+				</div>
+			</template>
+
+		</div>
+	</div>
+</template>

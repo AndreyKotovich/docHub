@@ -1,0 +1,408 @@
+<template>
+    <!-- <div class="slds-is-relative"> -->
+    <div if:true={isLoading}>
+        <lightning-spinner size="medium" variant="brand"></lightning-spinner>
+    </div>
+
+    <template if:false={isInfoConnection}>
+        <div class="slds-page-header">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <h1 class="slds-page-header__title slds-m-right_small slds-align-middle slds-truncate"
+                        title="Doc Hub Connections">Doc Hub Connections</h1>
+                </div>
+                <div class="slds-col slds-no-flex slds-grid slds-align-top">
+                    <div class="slds-button-group" role="group">
+                        <button class="slds-button slds-button_neutral" onclick={handleAddModal}> Add
+                            Connection</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slds-m-bottom_medium"></div>
+        <div class="slds-box slds-color__background_gray-1">
+            <template if:true={isConnectionList}>
+                <template for:each={dataConnection} for:item="con">
+                    <div class="slds-box slds-m-bottom_small" key={con.id} data-id={con.id} onclick={openConnection}>
+                        <article class="slds-tile slds-media">
+                            <div class="slds-media__figure">
+                                <lightning-icon icon-name="custom:custom57" size="medium"></lightning-icon>
+                            </div>
+                            <div class="slds-media__body">
+                                <h1 class="slds-tile__title slds-text-heading--medium slds-truncate" title={con.name}>
+                                    {con.name}
+                                </h1>
+
+                                <div class="slds-tile__detail">
+                                    <div class="slds-list--horizontal slds-wrap">
+                                        <div class="slds-item--label slds-text-color--weak slds-truncate" title="Email">
+                                            Email:</div>
+                                        <div class="slds-item--detail slds-truncate">{con.email}</div>
+                                        <div class="slds-item--label slds-text-color--weak slds-truncate"
+                                            title="Origin">
+                                            Origin:</div>
+                                        <div class="slds-item--detail slds-truncate">{con.origin}</div>
+                                        <div class="slds-item--label slds-text-color--weak slds-truncate"
+                                            title="Type Access">Type Access:</div>
+                                        <div class="slds-item--detail slds-truncate">{con.typeAccess}</div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                </template>
+            </template>
+
+            <template if:false={isConnectionList}>
+                No connections found
+            </template>
+        </div>
+    </template>
+
+    <template if:true={isInfoConnection}>
+        <div class="slds-page-header">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+
+                    <h1 class="slds-page-header__title slds-m-right_small slds-text-heading_large slds-truncate slds-text-align_center"
+                        title="Doc Hub Connections">Connection {currentConnection.name}</h1>
+                </div>
+                <div class="slds-col slds-no-flex slds-grid slds-align-top">
+                    <div class="slds-button-group" role="group">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="slds-m-bottom_medium"></div>
+        <div class="slds-box slds-color__background_gray-1">
+            <div class="slds-grid slds-gutters">
+                <div class="slds-col slds-size_1-of-2">
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Name</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-text value={currentConnection.name}></lightning-formatted-text>
+                            </span>
+                        </div>
+                    </div>
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Email</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-text value={currentConnection.email}>
+                                </lightning-formatted-text>
+                            </span>
+                        </div>
+                    </div>
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Origin</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-text value={currentConnection.origin}>
+                                </lightning-formatted-text>
+                            </span>
+                        </div>
+                    </div>
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Type Access</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-text value={currentConnection.typeAccess}>
+                                </lightning-formatted-text>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2">
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Links</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-number value={currentConnection.links}>
+                                </lightning-formatted-number>
+                            </span>
+                        </div>
+                    </div>
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Shows</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-number value={currentConnection.shows}>
+                                </lightning-formatted-number>
+                            </span>
+                        </div>
+                    </div>
+                    <div
+                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">Publishes</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span
+                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                <lightning-formatted-number value={currentConnection.publishes}>
+                                </lightning-formatted-number>
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="slds-m-top--x-large"></div>
+
+            <template if:true={isCurrentRowDocument}>
+                <c-draggable-list items={dataUnlinked} items2={dataLinked} onlistchanged={handleListChanged}
+                    onopeneditwindow={handleOpenEditWindow}></c-draggable-list>
+            </template>
+            <div class="slds-m-top--x-large"></div>
+            <div class="slds-grid slds-gutters">
+                <div class="slds-col" style="text-align: left;">
+                    <lightning-button variant="brand-outline" label="Back" title="back to connections"
+                        onclick={backToConnections} class="slds-m-left_xx-small">
+                    </lightning-button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- </div> -->
+    <template if:true={isAddModal}>
+        <div style="height: 500px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true"
+                aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                            title="Close" onclick={handleAddModal}>
+                            <lightning-icon icon-name="utility:close" variant="inverse" alternative-text="Close"
+                                size="medium">
+                            </lightning-icon>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Add Connection
+                        </h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+
+                        <lightning-combobox label="Type access" data-field="typeAccessForGoogle" required
+                            options={typeAccessForGoogle} onchange={handleFieldChange}></lightning-combobox>
+                        <lightning-input type="text" data-field="connectionName" required label="Connection Name">
+                        </lightning-input>
+                        <template if:true={isGoogleServiceAccount}>
+                            <lightning-file-upload accept={acceptedFormats} label="Attach receipt" required
+                                name="fileUploader" record-id={recordIdFileServiceAccount}
+                                onuploadfinished={handleUploadFinished}>
+                            </lightning-file-upload>
+                        </template>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Add" variant="brand" onclick={onAddConnection}>
+                        </lightning-button>
+                        <lightning-button label="Cancel" variant="neutral" onclick={handleAddModal}
+                            class='slds-m-left_x-small'></lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>
+    </template>
+
+
+    <template if:true={isDocInfo}>
+        <div style="height: 500px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-02" aria-modal="true"
+                aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container slds-modal__container_info">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                            title="Close" onclick={handleCloseDocInfoModal}>
+                            <lightning-icon icon-name="utility:close" variant="inverse" alternative-text="Close"
+                                size="medium">
+                            </lightning-icon>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-02" class="slds-text-heading_medium slds-hyphenate">
+                            {currentDocument.name}
+                        </h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-2">
+
+                        <div class="slds-grid slds-gutters">
+                            <div class="slds-col slds-size_1-of-2">
+                                <div
+                                    class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                    <div class="test-id__field-label-container slds-form-element__label">
+                                        <span class="test-id__field-label">Name</span>
+                                    </div>
+                                    <div class="slds-form-element__control">
+                                        <span
+                                            class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                            <lightning-formatted-text value={currentDocument.name}>
+                                            </lightning-formatted-text>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                    <div class="test-id__field-label-container slds-form-element__label">
+                                        <span class="test-id__field-label">Version</span>
+                                    </div>
+                                    <div class="slds-form-element__control">
+                                        <span
+                                            class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                            <lightning-formatted-text value={currentDocument.version}>
+                                            </lightning-formatted-text>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <template if:true={isPublishList}>
+                                    <div
+                                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                        <div class="test-id__field-label-container slds-form-element__label">
+                                            <span class="test-id__field-label">Total Shows</span>
+                                        </div>
+                                        <div class="slds-form-element__control">
+                                            <span
+                                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                                <lightning-formatted-number value={currentDocument.totalShows}>
+                                                </lightning-formatted-number>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                        <div class="test-id__field-label-container slds-form-element__label">
+                                            <span class="test-id__field-label">Total Publishes</span>
+                                        </div>
+                                        <div class="slds-form-element__control">
+                                            <span
+                                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                                <lightning-formatted-number value={currentDocument.totalPublishes}>
+                                                </lightning-formatted-number>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <div
+                                    class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                    <div class="test-id__field-label-container slds-form-element__label">
+                                        <span class="test-id__field-label">Created Time</span>
+                                    </div>
+                                    <div class="slds-form-element__control">
+                                        <span
+                                            class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                            <lightning-formatted-date-time value={currentDocument.createdTime}
+                                                year="numeric" day="2-digit" month="long" hour="2-digit"
+                                                minute="2-digit">
+                                            </lightning-formatted-date-time>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                    <div class="test-id__field-label-container slds-form-element__label">
+                                        <span class="test-id__field-label">Modified Time</span>
+                                    </div>
+                                    <div class="slds-form-element__control">
+                                        <span
+                                            class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                            <lightning-formatted-date-time value={currentDocument.modifiedTime}
+                                                year="numeric" day="2-digit" month="long" hour="2-digit"
+                                                minute="2-digit">
+                                            </lightning-formatted-date-time>
+                                        </span>
+                                    </div>
+                                </div>
+                                <template if:true={isPublishList}>
+                                    <div
+                                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                        <div class="test-id__field-label-container slds-form-element__label">
+                                            <span class="test-id__field-label">Published Date</span>
+                                        </div>
+                                        <div class="slds-form-element__control">
+                                            <span
+                                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                                <lightning-formatted-date-time value={currentDocument.publishedDate}
+                                                    year="numeric" day="2-digit" month="long" hour="2-digit"
+                                                    minute="2-digit">
+                                                </lightning-formatted-date-time>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                                        <div class="test-id__field-label-container slds-form-element__label">
+                                            <span class="test-id__field-label">Published Version</span>
+                                        </div>
+                                        <div class="slds-form-element__control">
+                                            <span
+                                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                                <lightning-formatted-text value={currentDocument.publishedVersion}>
+                                                </lightning-formatted-text>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="slds-m-top--x-medium"></div>
+                        <template if:true={isPublishList}>
+                            <div class="slds-grid slds-gutters slds-p-around_small">
+                                <div class="slds-col slds-box slds-theme_default">
+                                    <div class="slds-m-bottom_small slds-text-title_bold">Publish History</div>
+                                    <template for:each={publishList} for:item="pb">
+                                        <p key={pb.id}>{pb.name}</p>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template if:true={isAccessList}>
+                            <div class="slds-grid slds-gutters slds-p-around_small">
+                                <div class="slds-col slds-box slds-theme_default">
+                                    <div class="slds-m-bottom_small slds-text-title_bold">Access History</div>
+                                    <template for:each={accessList} for:item="ac">
+                                        <p key={ac.id}>{ac.name}</p>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>
+    </template>
+</template>

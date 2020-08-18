@@ -1,0 +1,11 @@
+.slds-modal__content{
+    overflow: initial;
+}
+.slds-modal__container_info {
+    width: 80%;
+    max-width: 80%;
+    min-width: 80%;
+}
+.slds-modal__content[c-docHubConnections_docHubConnections] {
+    overflow: auto;
+}

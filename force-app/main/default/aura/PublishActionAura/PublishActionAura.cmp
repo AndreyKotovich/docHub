@@ -1,0 +1,14 @@
+<aura:component implements="force:hasRecordId,force:lightningQuickAction">
+    <aura:attribute name="recordId" type="Id" />
+    <aura:html tag="style">
+        .slds-modal__container{
+        visibility: hidden;
+        position: initial;
+        transform: none;
+        }
+    </aura:html>
+    <aura:if isTrue="{!v.recordId}">
+        <c:publishActionLWC recordId="{!v.recordId}" oncloseQuickAction="{!c.handleCloseQuickAction}">
+        </c:publishActionLWC>
+    </aura:if>
+</aura:component>
