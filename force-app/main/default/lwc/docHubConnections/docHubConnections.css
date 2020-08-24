@@ -9,3 +9,6 @@
 .slds-modal__content[c-docHubConnections_docHubConnections] {
     overflow: auto;
 }
+.slds-spinner_container {
+    position: fixed;
+}

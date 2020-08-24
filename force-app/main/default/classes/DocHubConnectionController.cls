@@ -167,22 +167,34 @@ public class DocHubConnectionController {
 		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(
 			new Map<String, Object>{ 'createdBy' => CREATED_BY, 'autoPublish' => autoPublish }
 		)));
+
 		String res = getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/fetch/' + documentId + '?state=' + state,
 			'method' => 'Document Fetch'
 		});
+		System.debug('DocumentFetch ' + res);
 		return (String)JSON.deserializeUntyped(res);
 	}
 
 	@AuraEnabled
-	public static String getConnectionDocumentList(String connectionId) {
+	public static Map<String, Object> getConnectionDocumentList(Map<String, Object> generalData) {
+		String connectionId = String.valueOf(generalData.get('connectionId'));
+		String searchKey = generalData.containsKey('searchKey') ? String.valueOf(generalData.get('searchKey')) : '';
+		String pageToken = generalData.containsKey('pageToken') ? String.valueOf(generalData.get('pageToken')) : '';
+		
+		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(
+			new Map<String, Object>{ 'searchKey' => searchKey, 'pageToken' => pageToken, 'pageSize' => 20 }
+		)));
+		
 		String jsonString = getHttpRequest( new Map<String,Object> {
-			'url' => DOCUMENT_URL + '/' + connectionId + '/list',
+			'url' => DOCUMENT_URL + '/' + connectionId + '/list?state=' + state,
 			'method' => 'Get Connection Document List'
 		});
-		System.debug('jsonString ' + jsonString);
-		List<Object> docList = (List<Object>)JSON.deserializeUntyped(jsonString);
-		
+		Map<String, Object> resMap = (Map<String, Object>)JSON.deserializeUntyped(jsonString);
+		System.debug(resMap.get('files'));
+		System.debug(JSON.serialize(resMap.get('files')));
+		 
+		List<Object> docList = (List<Object>)JSON.deserializeUntyped(JSON.serialize(resMap.get('files')));
 		Set<String> docIds = new Set<String>();                                           
 		for(Object doc : docList) {
 			if (!String.isBlank(String.valueOf(((Map<String,Object>)doc).get('id')))) {
@@ -205,10 +217,12 @@ public class DocHubConnectionController {
 				 ((Map<String,Object>) doc).put('sfid',docHubIdMap.get(String.valueOf(((Map<String,Object>)doc).get('id'))));
 			}
 		}
-
-		System.debug('docList' + docList);
-		
-		return JSON.serialize(docList);
+ 		
+		return new Map<String, Object> {
+			'files' => JSON.serialize(docList),
+			'nextPageToken' => resMap.containsKey('nextPageToken') ? 
+				EncodingUtil.Base64Encode(Blob.valueOf((String)resMap.get('nextPageToken'))) : ''
+		};
 	}
 
 	@AuraEnabled

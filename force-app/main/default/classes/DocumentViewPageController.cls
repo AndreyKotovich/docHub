@@ -20,11 +20,11 @@ public with sharing class DocumentViewPageController {
 		this.fileLink = DocHubConnectionController.DocumentFetch(
 			new Map<String, Object> {
 				'connectionId' => dhl.Connection_Id__c,
-				'originId' => dhl.Origin_Id__c,
+				'documentId' => dhl.Origin_Id__c,
 				'autoPublish' => dhl.Auto_Publish__c
 			});
 		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'ApiUrl'];
-		if (urlNameCred.size() != 0) {
+		if (urlNameCred.size() != 0 && !String.isBlank(this.fileLink)) {
 			String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(new Map<String, Object>{ 'createdBy' => UserInfo.getName() })));
 			this.fileLink = urlNameCred[0].Endpoint + '/api/document/open/' + this.fileLink + '?state=' + state;
 			this.fileLink = System.EncodingUtil.urlEncode(this.fileLink, 'UTF-8');

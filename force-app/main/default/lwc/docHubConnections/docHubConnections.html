@@ -179,8 +179,23 @@
             <div class="slds-m-top--x-large"></div>
 
             <template if:true={isCurrentRowDocument}>
+                <div onkeyup={handleKeyUp}>
+                    <lightning-input type="search" class="slds-m-bottom_small" label="Search"></lightning-input>
+                </div>
                 <c-draggable-list items={dataUnlinked} items2={dataLinked} onlistchanged={handleListChanged}
                     onopeneditwindow={handleOpenEditWindow}></c-draggable-list>
+                <div class="slds-m-top_x-large"></div>
+                <div class="slds-grid slds-gutters">
+                    <div class="slds-col slds-size_1-of-2" style="text-align: right;">
+                        <lightning-button label="Previous" icon-name="utility:chevronleft" onclick={handlePrevious}
+                            disabled={showPrevButton}></lightning-button>
+                    </div>
+
+                    <div class="slds-col slds-size_1-of-2" style="text-align: left;">
+                        <lightning-button label="Next" icon-name="utility:chevronright" icon-position="right"
+                            onclick={handleNext} disabled={showNextButton}></lightning-button>
+                    </div>
+                </div>
             </template>
             <div class="slds-m-top--x-large"></div>
             <div class="slds-grid slds-gutters">
