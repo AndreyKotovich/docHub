@@ -6,17 +6,14 @@
             "c/docHubConnections": [
                 "docHubConnections/docHubConnections.js"
             ],
-            "c/draggableItem": [
-                "draggableItem/draggableItem.js"
+            "c/documentItem": [
+                "documentItem/documentItem.js"
+            ],
+            "c/documentList": [
+                "documentList/documentList.js"
             ],
             "c/publishActionLWC": [
                 "publishActionLWC/publishActionLWC.js"
-            ],
-            "c/draggableItemLink": [
-                "draggableItemLink/draggableItemLink.js"
-            ],
-            "c/draggableList": [
-                "draggableList/draggableList.js"
             ]
         }
     },

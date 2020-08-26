@@ -10,42 +10,36 @@ import getConnectionIdInfo from '@salesforce/apex/DocHubConnectionController.get
 import getConnectionDocumentList from '@salesforce/apex/DocHubConnectionController.getConnectionDocumentList';
 import getDocumentInfo from '@salesforce/apex/DocHubConnectionController.getDocumentInfo';
 
+const _FOLDERBREADCRUMBS = [{ label: 'Root', name: 'root', id: 'root' }];
+const _TYPEACCESSFORGOOGLE = [
+    { value: '', label: '' },
+    { value: 'OAuth2', label: 'OAuth 2.0' },
+    { value: 'ServiceAccount', label: 'Service Account' }
+];
+
 export default class docHubConnections extends LightningElement {
 
     @api recordIdFileServiceAccount;
     @track isAddModal = false;
     @track isDocInfo = false;
     @track isLoading = false;
-    
+
     @track dataConnection = [];
     @track currentDoc = [];
     // Google
     @track redirectUrlGoogleOAuth2;
     @track clientOptionsGoogleOAuth2 = {};
-    @track typeAccessForGoogle = [{ value: '', label: '' }, { value: 'OAuth2', label: 'OAuth 2.0' }, { value: 'ServiceAccount', label: 'Service Account' }];
+    @track typeAccessForGoogle = _TYPEACCESSFORGOOGLE;
     @track isGoogleOAuth2 = false;
     @track isGoogleServiceAccount = false;
 
     @track uploadedFiles;
     @track searchKey = '';
-
     @track nextPageToken = '';
-    @track curPageToken = '';
-    
     @track currentConnection = {};
     @track currentDocument = {};
-    @track navPage = [];
-    @track currentNavPage = 0;
-    @track dataLinked = [];
-    @track dataUnlinked = [];
-
-    get showPrevButton() {
-        return this.currentNavPage === 0;
-    }
-
-    get showNextButton() {
-        return this.nextPageToken === '';
-    }
+    @track folderBreadcrumbs = _FOLDERBREADCRUMBS;
+    @track _currentRowDocument = [];
 
     get acceptedFormats() {
         return ['.json'];
@@ -56,7 +50,8 @@ export default class docHubConnections extends LightningElement {
     }
 
     get isCurrentRowDocument() {
-        return this.currentRowDocument.length > 0 || (this.currentRowDocument.length === 0 && this.searchKey !== '');
+        // return this.currentRowDocument.length > 0 || (this.currentRowDocument.length === 0 && this.searchKey !== '');
+        return true;
     }
 
     get isPublishList() {
@@ -82,13 +77,6 @@ export default class docHubConnections extends LightningElement {
         return this._currentRowDocument;
     }
     set currentRowDocument(value) {
-        this.dataLinked = [];
-        this.dataUnlinked = [];
-        if (value.length > 0) {
-            this.dataLinked = value.filter(el => (el.Status__c && el.Status__c === 'Linked'));
-            this.dataUnlinked = value.filter(el => ((el.Status__c && el.Status__c === 'Unlinked') || !el.Status__c));
-            this.currentConnection.links = this.dataLinked.length;
-        }
         this._currentRowDocument = value;
     }
 
@@ -112,13 +100,14 @@ export default class docHubConnections extends LightningElement {
     }
 
     onAddConnection() {
+        let allValid, allCombobox;
         if (this.isGoogleOAuth2) {
-            const allValid = [...this.template.querySelectorAll('lightning-input')]
+            allValid = [...this.template.querySelectorAll('lightning-input')]
                 .reduce((validSoFar, inputCmp) => {
                     inputCmp.reportValidity();
                     return validSoFar && inputCmp.checkValidity();
                 }, true);
-            const allCombobox = [...this.template.querySelectorAll('lightning-combobox')]
+            allCombobox = [...this.template.querySelectorAll('lightning-combobox')]
                 .reduce((validSoFar, inputCmp) => {
                     inputCmp.reportValidity();
                     return validSoFar && inputCmp.checkValidity();
@@ -129,7 +118,7 @@ export default class docHubConnections extends LightningElement {
             } else { console.log('isGoogleOAuth2'); this.onAddConnectionGoogleAuth2(); }
         }
         if (this.isGoogleServiceAccount) {
-            const allValid = [...this.template.querySelectorAll('lightning-input')]
+            allValid = [...this.template.querySelectorAll('lightning-input')]
                 .reduce((validSoFar, inputCmp) => {
                     inputCmp.reportValidity();
                     return validSoFar && inputCmp.checkValidity();
@@ -140,12 +129,12 @@ export default class docHubConnections extends LightningElement {
             } else { console.log('onAddConnectionGoogleServiceAccount'); this.onAddConnectionGoogleServiceAccount(); }
         }
         if (!this.isGoogleOAuth2 && !this.isGoogleServiceAccount) {
-            const allValid = [...this.template.querySelectorAll('lightning-input')]
+            allValid = [...this.template.querySelectorAll('lightning-input')]
                 .reduce((validSoFar, inputCmp) => {
                     inputCmp.reportValidity();
                     return validSoFar && inputCmp.checkValidity();
                 }, true);
-            const allCombobox = [...this.template.querySelectorAll('lightning-combobox')]
+            allCombobox = [...this.template.querySelectorAll('lightning-combobox')]
                 .reduce((validSoFar, inputCmp) => {
                     inputCmp.reportValidity();
                     return validSoFar && inputCmp.checkValidity();
@@ -165,11 +154,10 @@ export default class docHubConnections extends LightningElement {
 
         createGoogleDriveAuthURL({ generalData: this.clientOptionsGoogleOAuth2 })
             .then(res => {
-                console.log('res ', res);
                 window.location.href = res.Url;
             })
             .cathc(error => {
-                console.log('error ', error);
+                console.log('Error', JSON.parse(JSON.stringify(error)));
             })
     }
 
@@ -184,7 +172,6 @@ export default class docHubConnections extends LightningElement {
                 return createConnection({ generalData: clientOptionsGoogleServiceAccount })
             })
             .then(result => {
-                console.log('createConnection result', JSON.parse(JSON.stringify(result)));
                 this.handleAddModal();
                 sethislf.isLoading = false;
                 this.showToastMessage('Success', 'success', 'dismissable');
@@ -219,7 +206,6 @@ export default class docHubConnections extends LightningElement {
         this.isDocInfo = false;
     }
 
-
     openConnection(e) {
         this.getConnectioAndDocumentDetails({ id: e.currentTarget.dataset.id });
     }
@@ -227,9 +213,23 @@ export default class docHubConnections extends LightningElement {
     linkDocument(doc) {
         console.log('linkDocument', doc);
         this.isLoading = true;
-        linkDocument({ generalData: { connectionId: JSON.stringify(this.currentConnection.id), documentId: doc.id, Id: doc.sfid } })
+        linkDocument({
+            generalData: {
+                connectionId: JSON.stringify(this.currentConnection.id),
+                documentId: doc.id,
+                id: doc.sfid,
+                folder: this.folderBreadcrumbs[this.folderBreadcrumbs.length -1].name,
+                connectionEmail: this.currentConnection.email                
+            }
+        })
             .then((res) => {
                 console.log(' linkDocument res ', JSON.parse(JSON.stringify(res)));
+
+                let updateDoc = this._currentRowDocument.find(e => e.id === doc.id);
+                if (updateDoc) {
+                    updateDoc.Status__c = 'Linked';
+                    updateDoc.sfid = res.result.sfid;
+                }
                 this.isLoading = false;
                 this.showToastMessage(res.message, res.status, 'dismissable');
             })
@@ -245,8 +245,12 @@ export default class docHubConnections extends LightningElement {
         unlinkDocument({ Id: doc.sfid })
             .then((res) => {
                 console.log(' documentUnlink res ', res);
-                this.showToastMessage(res.message, res.status, 'dismissable');
+                let updateDoc = this._currentRowDocument.find(e => e.sfid === doc.sfid);
+                if (updateDoc) {
+                    updateDoc.Status__c = 'Unlinked';
+                }
                 this.isLoading = false;
+                this.showToastMessage(res.message, res.status, 'dismissable');
             })
             .catch(error => {
                 this.isLoading = false;
@@ -299,15 +303,16 @@ export default class docHubConnections extends LightningElement {
     getConnectioAndDocumentDetails(row) {
         this.currentConnection = row;
         this.currentRowDocument = [];
-        this.dataLinked = [];
-        this.dataUnlinked = [];
-        console.log('this.curssrentRow ', this.currentConnection);
+        this.folderBreadcrumbs = _FOLDERBREADCRUMBS.slice();
+        this.searchKey = '';
+        //this.nextPageToken = 'root';
+
+        console.log('this.curssrentRow ', JSON.parse(JSON.stringify(this.currentConnection)));
         this.isLoading = true;
         getConnectionIdInfo({ connectionId: this.currentConnection.id })
             .then((res) => {
                 console.log('resssss', JSON.parse(JSON.stringify(res)));
                 this.currentConnection = JSON.parse(res);
-                this.navPage = [''];
                 return this._getConnectionDocumentList();
             })
             .then((res) => {
@@ -318,24 +323,29 @@ export default class docHubConnections extends LightningElement {
                 this.isLoading = false;
                 console.log('Error', JSON.parse(JSON.stringify(error)));
             })
-
     }
 
-    _getConnectionDocumentList(pageToken = '', isAdd = true) {
-        this.curPageToken = pageToken;
+    _getConnectionDocumentList(pageToken = '', folder) {
         this.isLoading = true;
-        
+        let param = {
+            connectionId: this.currentConnection.id,
+            searchKey: this.searchKey,
+            pageToken: pageToken,
+        }
+
+        if (folder) { param.folder = folder; }
+        console.log('_getConnectionDocumentList param ', param);
         return getConnectionDocumentList({
-            generalData: {
-                connectionId: this.currentConnection.id,
-                searchKey: this.searchKey,
-                pageToken: pageToken
-            }
+            generalData: param
         })
             .then((res) => {
-                this.currentRowDocument = JSON.parse(res.files);
+                if (this.currentRowDocument.length > 0) {
+                    this.currentRowDocument = [...this.currentRowDocument, ...JSON.parse(res.files)];
+                }
+                else {
+                    this.currentRowDocument = JSON.parse(res.files)
+                }
                 this.nextPageToken = res.nextPageToken;
-                if (!!res.nextPageToken && isAdd) { this.navPage.push(res.nextPageToken); }
                 return Promise.resolve();
             })
             .catch(error => {
@@ -344,7 +354,7 @@ export default class docHubConnections extends LightningElement {
             })
     }
 
-    howToastMessage(title, variant, mode) {
+    showToastMessage(title, variant, mode) {
         this.dispatchEvent(
             new ShowToastEvent({
                 title: title,
@@ -369,41 +379,46 @@ export default class docHubConnections extends LightningElement {
         this.isInfoConnection = false;
     }
 
-    handleListChanged(e) {
-        let diff = function (arr1, arr2) {
-            const arr1D = arr1.filter(x => !arr2.find(e => e.id === x.id));
-            const arr2D = arr2.filter(x => !arr1.find(e => e.id === x.id))
-            arr1D.push(...arr2D)
-            return arr1D;
+    handleEventItem(e) {
+        switch (e.detail.method) {
+            case 'EditDocument':
+                this.getDocumentInfo({ id: e.detail.id });
+                break;
+            case 'Unlinked':
+                this.unlinkDocument({ id: e.detail.id, sfid: e.detail.sfid });
+                break;
+            case 'Linked':
+                this.linkDocument({ id: e.detail.id, sfid: e.detail.sfid });
+                break;
+            case 'OpenFolder':
+                this.openFolder(e.detail);
+                break;
         }
-
-        if (this.dataUnlinked.length !== e.target.items.length) {
-            if (this.dataUnlinked.length > e.target.items.length) {
-                let newDataLinked = e.target.items;
-                let newLinkDocument = diff(JSON.parse(JSON.stringify(this.dataUnlinked)), JSON.parse(JSON.stringify(newDataLinked)));
-                this.linkDocument(newLinkDocument[0]);
-            } else {
-                let newDataUnLinked = e.target.items;
-                let newUnLinkDocument = diff(JSON.parse(JSON.stringify(this.dataUnlinked)), JSON.parse(JSON.stringify(newDataUnLinked)));
-                this.unlinkDocument(newUnLinkDocument[0]);
-            }
-            this.dataUnlinked = e.target.items;
-            this.dataLinked = e.target.items2;
-        }
-
-
     }
 
-    handleOpenEditWindow(e) {
-        this.getDocumentInfo({ id: e.detail.id });
+    openFolder(detail, isAdd = true) {
+        this.currentRowDocument = [];
+        this.searchKey = '';
+        this._getConnectionDocumentList('', detail.id)
+            .then((res) => {
+                if (isAdd) {
+                    this.folderBreadcrumbs.push({ label: detail.name, name: detail.name, id: detail.id });
+                }
+                this.isLoading = false;
+            })
+            .catch(error => {
+                this.isLoading = false;
+                console.log('Error', JSON.parse(JSON.stringify(error)));
+            })
     }
 
-    handleKeyUp(evt) {
-        if (evt.keyCode === 13) {
-            this.searchKey = evt.target.value;
+    handleKeyUp(e) {
+        if (e.keyCode === 13) {
+            this.searchKey = e.target.value;
+            this.currentRowDocument = [];
+            this.folderBreadcrumbs = _FOLDERBREADCRUMBS.slice();
             this._getConnectionDocumentList()
                 .then((res) => {
-                    console.log('_getConnectionDocumentList res');
                     this.isLoading = false;
                 })
                 .catch(error => {
@@ -413,34 +428,24 @@ export default class docHubConnections extends LightningElement {
         }
     }
 
-    handlePrevious() {
-        this.currentNavPage -= 1;
-        let prevPageToken = this.navPage[this.currentNavPage];
-        if (!!this.nextPageToken) { this.navPage.pop(); }
-        this._getConnectionDocumentList(prevPageToken, false)
-            .then((res) => {
-                console.log('_getConnectionDocumentList res');
-                this.isLoading = false;
-            })
-            .catch(error => {
-                this.isLoading = false;
-                console.log('Error', JSON.parse(JSON.stringify(error)));
-            })
-
-
+    handleNavigateTo(e) {
+        let folderId = e.currentTarget.dataset.id;
+        let folderInx = this.folderBreadcrumbs.findIndex(el => el.id === folderId);
+        this.folderBreadcrumbs = this.folderBreadcrumbs.slice(0, folderInx + 1);
+        this.openFolder({ id: folderId }, false);
     }
 
-    handleNext() {
-        this.currentNavPage += 1;
-        this._getConnectionDocumentList(this.nextPageToken)
-            .then((res) => {
-                console.log('_getConnectionDocumentList res');
-                this.isLoading = false;
-            })
-            .catch(error => {
-                this.isLoading = false;
-                console.log('Error', JSON.parse(JSON.stringify(error)));
-            })
+    refreshListDocumet() {
+        if (this.nextPageToken !== '') {
+            this._getConnectionDocumentList(this.nextPageToken)
+                .then((res) => {
+                    this.isLoading = false;
+                })
+                .catch(error => {
+                    this.isLoading = false;
+                    console.log('Error', JSON.parse(JSON.stringify(error)));
+                })
+        }
     }
 
     formatDate(date) {

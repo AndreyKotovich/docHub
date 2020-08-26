@@ -5,7 +5,6 @@ public class DocHubConnectionController {
 	private static final String GOOGLE_DRIVE_AUTH = '/auth/google/authorize';
 	private static final String CONNECTION_URL = API_URL + '/api/connection/' + ORGANIZATION_ID;
 	private static final String DOCUMENT_URL = API_URL + '/api/document/' + ORGANIZATION_ID;
-
 	
 	@AuraEnabled
 	public static Map<String, Object> createGoogleDriveAuthURL(Map<String, Object> generalData)  {
@@ -38,7 +37,6 @@ public class DocHubConnectionController {
 	
 	@AuraEnabled
 	public static Map<String, Object> unlinkDocument(String Id) {
-		System.debug('unlinkDocument ' + Id);
 		update new Doc_Hub_Link__c(Id = Id, Status__c = 'Unlinked');
 		
 		return new Map<String, Object> {
@@ -51,7 +49,10 @@ public class DocHubConnectionController {
 	public static Map<String, Object> linkDocument(Map<String, Object> generalData) {
 		String connectionId = String.valueOf(generalData.get('connectionId'));
 		String documentId  = String.valueOf(generalData.get('documentId')); 
-		String Id = String.valueOf(generalData.get('Id'));
+		String id = String.valueOf(generalData.get('id'));
+		String folder = String.valueOf(generalData.get('folder'));
+		String connectionEmail = String.valueOf(generalData.get('connectionEmail'));
+		
 		Map<String, Object> resDocumentLink = postHttpRequest(new Map<String, Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/link/' + documentId,
 			'method' => 'Link Document'
@@ -59,7 +60,6 @@ public class DocHubConnectionController {
 
 		if (resDocumentLink.get('status') == 'Success') {
 			
-			System.debug('linkDocument resDocumentLink ' + resDocumentLink );
 			String nameDoc = String.valueOf(((Map<String, Object>)resDocumentLink.get('result')).get('name')); 
 			String docId = String.valueOf(((Map<String, Object>)resDocumentLink.get('result')).get('documentId')); 
 			String hubDocId = String.valueOf(((Map<String, Object>)resDocumentLink.get('result')).get('id')); 
@@ -71,13 +71,16 @@ public class DocHubConnectionController {
 				Published_Date__c = !String.isBlank(publishedDate) ? Datetime.valueOf(publishedDate.replace('T',' ')) : null,
 				Status__c = 'Linked',
 				Connection_Id__c = connectId,
-				Document_Name__c = nameDoc
+				Document_Name__c = nameDoc,
+				Folder__c = folder,
+				Linked_By__c = connectionEmail
 			);
 
-			if (!String.isBlank(Id)) {
-				docHub.Id = Id;
+			if (!String.isBlank(id)) {
+				docHub.id = id;
 			}
 			Database.upsert( new List<Doc_Hub_Link__c> { docHub } , false);
+			((Map<String, Object>)resDocumentLink.get('result')).put('sfid', docHub.id);
 		}
 
 		return resDocumentLink;
@@ -115,7 +118,6 @@ public class DocHubConnectionController {
 				'method' => 'Publish Connection'
 			});
 
-			System.debug('resDocumentLink' + resDocumentLink);
 			if (resDocumentLink.get('status') == 'Success') {
 			
 				String publishedDate = String.valueOf(((Map<String, Object>)resDocumentLink.get('result')).get('publishedDate'));
@@ -125,6 +127,8 @@ public class DocHubConnectionController {
 				);
 				//Database.upsert( new List<Doc_Hub_Link__c> { docHub } , Doc_Hub_Link__c.Fields.Origin_Id__c, false);
 				Database.update( new List<Doc_Hub_Link__c> { docHub } , false);
+				
+				((Map<String, Object>)resDocumentLink.get('result')).put('sfid', docHub.id);
 			} 
 			return resDocumentLink;
 		}
@@ -160,7 +164,6 @@ public class DocHubConnectionController {
 	}
 	
 	public static String DocumentFetch(Map<String, Object> generalData) {
-		
 		String connectionId = String.valueOf(generalData.get('connectionId'));
 		String documentId  = String.valueOf(generalData.get('documentId')); 
 		Boolean autoPublish = Boolean.valueOf(generalData.get('autoPublish'));
@@ -172,7 +175,6 @@ public class DocHubConnectionController {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/fetch/' + documentId + '?state=' + state,
 			'method' => 'Document Fetch'
 		});
-		System.debug('DocumentFetch ' + res);
 		return (String)JSON.deserializeUntyped(res);
 	}
 
@@ -181,18 +183,25 @@ public class DocHubConnectionController {
 		String connectionId = String.valueOf(generalData.get('connectionId'));
 		String searchKey = generalData.containsKey('searchKey') ? String.valueOf(generalData.get('searchKey')) : '';
 		String pageToken = generalData.containsKey('pageToken') ? String.valueOf(generalData.get('pageToken')) : '';
+		String folder = generalData.containsKey('folder') ? String.valueOf(generalData.get('folder')) : null;
 		
-		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(
-			new Map<String, Object>{ 'searchKey' => searchKey, 'pageToken' => pageToken, 'pageSize' => 20 }
-		)));
+		Map<String, Object> stateMap = new Map<String, Object>{ 
+			'searchKey' => searchKey, 
+			'pageToken' => pageToken, 
+			'pageSize' => 20 
+		};
+
+		if (!String.isBlank(folder)) {
+			stateMap.put('folder', folder);
+		}
+
+		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(stateMap)));
 		
 		String jsonString = getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/list?state=' + state,
 			'method' => 'Get Connection Document List'
 		});
 		Map<String, Object> resMap = (Map<String, Object>)JSON.deserializeUntyped(jsonString);
-		System.debug(resMap.get('files'));
-		System.debug(JSON.serialize(resMap.get('files')));
 		 
 		List<Object> docList = (List<Object>)JSON.deserializeUntyped(JSON.serialize(resMap.get('files')));
 		Set<String> docIds = new Set<String>();                                           
@@ -204,7 +213,11 @@ public class DocHubConnectionController {
 
 		Map<String, String> docHubStatusMap = new Map<String, String>();
 		Map<String, String> docHubIdMap = new Map<String, String>();
-		List<Doc_Hub_Link__c> docHubList = [SELECT Id, Origin_Id__c, Status__c FROM Doc_Hub_Link__c WHERE Origin_Id__c IN :docIds];
+		List<Doc_Hub_Link__c> docHubList = [
+			SELECT Id, Origin_Id__c, Status__c 
+			FROM Doc_Hub_Link__c 
+			WHERE Connection_Id__c =:connectionId AND Origin_Id__c IN :docIds
+		];
 		for (Doc_Hub_Link__c docHub: docHubList) {
 			docHubStatusMap.put(docHub.Origin_Id__c, docHub.Status__c);
 			docHubIdMap.put(docHub.Origin_Id__c, docHub.Id);
@@ -227,7 +240,6 @@ public class DocHubConnectionController {
 
 	@AuraEnabled
 	public static String readJsonFileForGoogleServiceAccount(Id idContentDocument) {
-		 
 		ContentVersion objVersion = [SELECT Id, VersionData FROM ContentVersion WHERE ContentDocumentId =:idContentDocument];
 		Map<String, Object> convertJsonToMap = new Map <string, object>();
 		try {
@@ -256,11 +268,11 @@ public class DocHubConnectionController {
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
 		
-		insert createLog(new Map<String,Object> {
-			'method' => generalData.get('method'),
+		createLog(new Map<String,String> {
+			'method' => String.valueOf(generalData.get('method')),
 			'request' => jsonRes,
 			'response' => resJSON,
-			'responseCode' => res.getStatusCode()
+			'responseCode' => String.valueOf(res.getStatusCode())
 		});
 
 		Map<String,Object> response = new Map<String,Object>();
@@ -288,17 +300,16 @@ public class DocHubConnectionController {
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
 		Map<String,Object> response = new Map<String,Object>();
-		System.debug(resJSON);
-
-		if (generalData.get('method') != 'Document Fetch') {
-			insert createLog(new Map<String,Object> {
-				'method' => generalData.get('method'),
-				'request' => url,
-				'response' => resJSON,
-				'responseCode' => res.getStatusCode()
-			});
-		}
 		
+		Map<String,String> logMap = new Map<String,String> {
+			'method' => String.valueOf(generalData.get('method')),
+			'request' => url,
+			'response' => resJSON,
+			'responseCode' => String.valueOf(res.getStatusCode())
+		};
+
+		if (generalData.get('method') != 'Document Fetch') { createLog(logMap); } 
+
 		try {
 			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
 		} 
@@ -318,14 +329,13 @@ public class DocHubConnectionController {
 		return 'https://' + prefix.toLowerCase() + '.lightning.force.com';
 	}
 
-	private static Doc_Hub_Log__c createLog (Map<String,Object> logs) {
-		return new Doc_Hub_Log__c (
+	private static void createLog (Map<String,String> logs) {
+		insert new Doc_Hub_Log__c (
 			Date__c = Date.today(),
 			Method__c = String.valueOf(logs.get('method')),
 			Request__c = String.valueOf(logs.get('request')),
 			Response__c = String.valueOf(logs.get('response')),
 			Response_Code__c = String.valueOf(logs.get('responseCode'))
 		);
-	}
- 
+	} 
 }

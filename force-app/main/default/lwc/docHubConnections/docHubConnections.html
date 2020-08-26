@@ -8,46 +8,38 @@
         <div class="slds-page-header">
             <div class="slds-grid">
                 <div class="slds-col slds-has-flexi-truncate">
-                    <h1 class="slds-page-header__title slds-m-right_small slds-align-middle slds-truncate"
-                        title="Doc Hub Connections">Doc Hub Connections</h1>
+                    <h1 class="slds-text-heading_medium" title="Doc Hub Connections">Doc Hub Connections</h1>
                 </div>
-                <div class="slds-col slds-no-flex slds-grid slds-align-top">
+                <div class="slds-col slds-no-flex slds-align-top">
                     <div class="slds-button-group" role="group">
-                        <button class="slds-button slds-button_neutral" onclick={handleAddModal}> Add
-                            Connection</button>
+                        <lightning-button variant="brand-outline" label="Add Connection" title="Add Connection"
+                            icon-name="utility:add" onclick={handleAddModal}>
+                        </lightning-button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="slds-m-bottom_medium"></div>
+        <div class="slds-var-m-bottom_medium"></div>
         <div class="slds-box slds-color__background_gray-1">
             <template if:true={isConnectionList}>
                 <template for:each={dataConnection} for:item="con">
-                    <div class="slds-box slds-m-bottom_small" key={con.id} data-id={con.id} onclick={openConnection}>
+                    <div class="slds-box slds-var-m-bottom_small slds-text-link_reset" key={con.id} data-id={con.id}
+                        onclick={openConnection}>
                         <article class="slds-tile slds-media">
                             <div class="slds-media__figure">
-                                <lightning-icon icon-name="custom:custom57" size="medium"></lightning-icon>
+                                <lightning-icon icon-name="custom:custom57" size="large"></lightning-icon>
                             </div>
                             <div class="slds-media__body">
-                                <h1 class="slds-tile__title slds-text-heading--medium slds-truncate" title={con.name}>
-                                    {con.name}
+                                <h1 class="slds-text-heading_medium slds-truncate" title={con.name}>
+                                    {con.name} - {con.email}
                                 </h1>
-
                                 <div class="slds-tile__detail">
-                                    <div class="slds-list--horizontal slds-wrap">
-                                        <div class="slds-item--label slds-text-color--weak slds-truncate" title="Email">
-                                            Email:</div>
-                                        <div class="slds-item--detail slds-truncate">{con.email}</div>
-                                        <div class="slds-item--label slds-text-color--weak slds-truncate"
-                                            title="Origin">
-                                            Origin:</div>
-                                        <div class="slds-item--detail slds-truncate">{con.origin}</div>
-                                        <div class="slds-item--label slds-text-color--weak slds-truncate"
-                                            title="Type Access">Type Access:</div>
-                                        <div class="slds-item--detail slds-truncate">{con.typeAccess}</div>
+                                    <div class="slds-list_horizontal slds-wrap">
+                                        <div class="slds-item_label slds-text-color_weak slds-truncate">
+                                            {con.origin} : {con.typeAccess}
+                                        </div>
                                     </div>
-
                                 </div>
                             </div>
                         </article>
@@ -64,76 +56,27 @@
 
     <template if:true={isInfoConnection}>
         <div class="slds-page-header">
-            <div class="slds-grid">
-                <div class="slds-col slds-has-flexi-truncate">
 
-                    <h1 class="slds-page-header__title slds-m-right_small slds-text-heading_large slds-truncate slds-text-align_center"
-                        title="Doc Hub Connections">Connection {currentConnection.name}</h1>
+            <div class="slds-grid slds-grid_align-spread">
+                <div class="slds-col">
+                    <lightning-button variant="base" label="Back" title="back to connections" icon-name="utility:back"
+                        onclick={backToConnections} class="slds-var-m-left_xx-small slds-text-align_left">
+                    </lightning-button>
                 </div>
-                <div class="slds-col slds-no-flex slds-grid slds-align-top">
-                    <div class="slds-button-group" role="group">
+                <div class="slds-col">
+                    <h1 class="slds-page-header__title slds-m-right_small slds-text-heading_large slds-truncate slds-text-align_center"
+                        title="Doc Hub Connections">Connection {currentConnection.name} -
+                        {currentConnection.email} ({currentConnection.origin} : {currentConnection.typeAccess})</h1>
+                </div>
+                <div class="slds-col">
 
-                    </div>
                 </div>
             </div>
         </div>
         <div class="slds-m-bottom_medium"></div>
         <div class="slds-box slds-color__background_gray-1">
             <div class="slds-grid slds-gutters">
-                <div class="slds-col slds-size_1-of-2">
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Name</span>
-                        </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-text value={currentConnection.name}></lightning-formatted-text>
-                            </span>
-                        </div>
-                    </div>
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Email</span>
-                        </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-text value={currentConnection.email}>
-                                </lightning-formatted-text>
-                            </span>
-                        </div>
-                    </div>
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Origin</span>
-                        </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-text value={currentConnection.origin}>
-                                </lightning-formatted-text>
-                            </span>
-                        </div>
-                    </div>
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Type Access</span>
-                        </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-text value={currentConnection.typeAccess}>
-                                </lightning-formatted-text>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="slds-col slds-size_1-of-2">
+                <div class="slds-col slds-size_1-of-3">
                     <div
                         class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
                         <div class="test-id__field-label-container slds-form-element__label">
@@ -147,6 +90,9 @@
                             </span>
                         </div>
                     </div>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3">
                     <div
                         class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
                         <div class="test-id__field-label-container slds-form-element__label">
@@ -160,6 +106,9 @@
                             </span>
                         </div>
                     </div>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3">
                     <div
                         class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
                         <div class="test-id__field-label-container slds-form-element__label">
@@ -173,38 +122,25 @@
                             </span>
                         </div>
                     </div>
-
                 </div>
             </div>
-            <div class="slds-m-top--x-large"></div>
+
+            <div class="slds-m-top--x-medium"></div>
 
             <template if:true={isCurrentRowDocument}>
                 <div onkeyup={handleKeyUp}>
                     <lightning-input type="search" class="slds-m-bottom_small" label="Search"></lightning-input>
                 </div>
-                <c-draggable-list items={dataUnlinked} items2={dataLinked} onlistchanged={handleListChanged}
-                    onopeneditwindow={handleOpenEditWindow}></c-draggable-list>
-                <div class="slds-m-top_x-large"></div>
-                <div class="slds-grid slds-gutters">
-                    <div class="slds-col slds-size_1-of-2" style="text-align: right;">
-                        <lightning-button label="Previous" icon-name="utility:chevronleft" onclick={handlePrevious}
-                            disabled={showPrevButton}></lightning-button>
-                    </div>
-
-                    <div class="slds-col slds-size_1-of-2" style="text-align: left;">
-                        <lightning-button label="Next" icon-name="utility:chevronright" icon-position="right"
-                            onclick={handleNext} disabled={showNextButton}></lightning-button>
-                    </div>
-                </div>
+                <lightning-breadcrumbs class="slds-m-bottom_small">
+                    <template for:each={folderBreadcrumbs} for:item="crumbs">
+                        <lightning-breadcrumb key={crumbs.id} label={crumbs.label} name={crumbs.name}
+                            data-id={crumbs.id} onclick={handleNavigateTo}>
+                        </lightning-breadcrumb>
+                    </template>
+                </lightning-breadcrumbs>
+                <c-document-list items={currentRowDocument} onrefreshlist={refreshListDocumet}
+                    oneventitem={handleEventItem}></c-document-list>
             </template>
-            <div class="slds-m-top--x-large"></div>
-            <div class="slds-grid slds-gutters">
-                <div class="slds-col" style="text-align: left;">
-                    <lightning-button variant="brand-outline" label="Back" title="back to connections"
-                        onclick={backToConnections} class="slds-m-left_xx-small">
-                    </lightning-button>
-                </div>
-            </div>
         </div>
     </template>
 

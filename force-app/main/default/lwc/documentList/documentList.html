@@ -1,0 +1,10 @@
+<template>
+	<div class="slds-box list" data-id="listScroll"  onscroll={handleScroll}>
+		<template for:each={items} for:item="item" for:index="idx">
+			<div key={item.name}>
+				<c-document-item key={item.name} item={item} index={idx} oneventitem={handleEventItem}>
+				</c-document-item>
+			</div>
+		</template>
+	</div>
+</template>
