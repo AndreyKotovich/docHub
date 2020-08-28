@@ -23,6 +23,8 @@ export default class docHubConnections extends LightningElement {
     @track isAddModal = false;
     @track isDocInfo = false;
     @track isLoading = false;
+    @track isAuthorizeRef = false;
+    @track fileName = '';
 
     @track dataConnection = [];
     @track currentDoc = [];
@@ -60,6 +62,11 @@ export default class docHubConnections extends LightningElement {
 
     get isAccessList() {
         return this.accessList.length > 0;
+    }
+
+    get isAuthorizeAvail() {
+        return (!this.isGoogleOAuth2 && !this.isGoogleServiceAccount) ? true : 
+            (this.isGoogleOAuth2 ? false : (this.isGoogleServiceAccount && this.uploadedFiles.length > 0) ? false : true);
     }
 
     get isInfoConnection() {
@@ -115,7 +122,13 @@ export default class docHubConnections extends LightningElement {
 
             if (!allValid || !allCombobox) {
                 this.showToastMessage('You must enter values in the appropriate fields', 'error', 'dismissable');
-            } else { console.log('isGoogleOAuth2'); this.onAddConnectionGoogleAuth2(); }
+            } else {
+                this.clientOptionsGoogleOAuth2.connectionName = this.template.querySelector('[data-field=connectionName]').value;
+                this.clientOptionsGoogleOAuth2.connectionOrigin = 'GoogleDrive';
+                this.clientOptionsGoogleOAuth2.typeAccess = this.template.querySelector('[data-field=typeAccessForGoogle]').value;
+                this.clientOptionsGoogleOAuth2.currentUrl = window.location.href;
+                this.onAddConnectionGoogleAuth2();
+            }
         }
         if (this.isGoogleServiceAccount) {
             allValid = [...this.template.querySelectorAll('lightning-input')]
@@ -147,16 +160,11 @@ export default class docHubConnections extends LightningElement {
     }
 
     onAddConnectionGoogleAuth2() {
-        this.clientOptionsGoogleOAuth2.connectionName = this.template.querySelector('[data-field=connectionName]').value;
-        this.clientOptionsGoogleOAuth2.connectionOrigin = 'GoogleDrive';
-        this.clientOptionsGoogleOAuth2.typeAccess = this.template.querySelector('[data-field=typeAccessForGoogle]').value;
-        this.clientOptionsGoogleOAuth2.currentUrl = window.location.href;
-
         createGoogleDriveAuthURL({ generalData: this.clientOptionsGoogleOAuth2 })
             .then(res => {
                 window.location.href = res.Url;
             })
-            .cathc(error => {
+            .catch(error => {
                 console.log('Error', JSON.parse(JSON.stringify(error)));
             })
     }
@@ -173,11 +181,43 @@ export default class docHubConnections extends LightningElement {
             })
             .then(result => {
                 this.handleAddModal();
-                sethislf.isLoading = false;
+                this.isLoading = false;
                 this.showToastMessage('Success', 'success', 'dismissable');
 
             })
             .catch(error => { console.log('Error', JSON.parse(JSON.stringify(error))); });
+    }
+
+    onAuthorize() {
+        if (this.isGoogleOAuth2) {
+            this.clientOptionsGoogleOAuth2.connectionName = this.currentConnection.name;
+            this.clientOptionsGoogleOAuth2.connectionOrigin = this.currentConnection.origin;
+            this.clientOptionsGoogleOAuth2.typeAccess = this.currentConnection.typeAccess;
+            this.clientOptionsGoogleOAuth2.currentUrl = window.location.href;
+            this.onAddConnectionGoogleAuth2();
+        }
+
+        if (this.isGoogleServiceAccount) {
+            if (this.uploadedFiles.length === 0) {
+                this.showToastMessage('Upload the JSON file', 'error', 'dismissable');
+            } else {
+                let clientOptionsGoogleServiceAccount = {};
+                clientOptionsGoogleServiceAccount.connectionName = this.currentConnection.name;
+                readJsonFileForGoogleServiceAccount({ idContentDocument: this.uploadedFiles[0].documentId })
+                    .then(resJson => {
+                        clientOptionsGoogleServiceAccount.state = resJson;
+                        clientOptionsGoogleServiceAccount.connectionOrigin = this.currentConnection.origin;
+                        clientOptionsGoogleServiceAccount.typeAccess = this.currentConnection.typeAccess;
+                        return createConnection({ generalData: clientOptionsGoogleServiceAccount })
+                    })
+                    .then(result => {
+                        this.isLoading = false;
+                        this.showToastMessage('Success', 'success', 'dismissable');
+                        this.getConnectioAndDocumentDetails({ id: this.currentConnection.id});
+                    })
+                    .catch(error => { console.log('Error', JSON.parse(JSON.stringify(error))); });
+            }
+        }
     }
 
     handleFieldChange(e) {
@@ -191,7 +231,9 @@ export default class docHubConnections extends LightningElement {
 
     handleUploadFinished(e) {
         this.uploadedFiles = e.detail.files;
-        console.log('this.handleUploadFinished', this.uploadedFiles[0].documentId)
+        let strFileName = this.uploadedFiles[0].name + ' Files uploaded successfully!';
+        this.showToastMessage(strFileName, 'Success', 'dismissable');
+        this.fileName = this.uploadedFiles[0].name;
     }
 
     handleAddModal() {
@@ -210,21 +252,19 @@ export default class docHubConnections extends LightningElement {
         this.getConnectioAndDocumentDetails({ id: e.currentTarget.dataset.id });
     }
 
-    linkDocument(doc) {
-        console.log('linkDocument', doc);
+    _linkDocument(doc) {
         this.isLoading = true;
         linkDocument({
             generalData: {
                 connectionId: JSON.stringify(this.currentConnection.id),
                 documentId: doc.id,
                 id: doc.sfid,
-                folder: this.folderBreadcrumbs[this.folderBreadcrumbs.length -1].name,
-                connectionEmail: this.currentConnection.email                
+                folder: this.folderBreadcrumbs[this.folderBreadcrumbs.length - 1].name,
+                connectionEmail: this.currentConnection.email,
+                origin: this.currentConnection.origin,
             }
         })
             .then((res) => {
-                console.log(' linkDocument res ', JSON.parse(JSON.stringify(res)));
-
                 let updateDoc = this._currentRowDocument.find(e => e.id === doc.id);
                 if (updateDoc) {
                     updateDoc.Status__c = 'Linked';
@@ -239,12 +279,10 @@ export default class docHubConnections extends LightningElement {
             });
     }
 
-    unlinkDocument(doc) {
-        console.log('unlinkDocument doc', doc)
+    _unlinkDocument(doc) {
         this.isLoading = true;
         unlinkDocument({ Id: doc.sfid })
             .then((res) => {
-                console.log(' documentUnlink res ', res);
                 let updateDoc = this._currentRowDocument.find(e => e.sfid === doc.sfid);
                 if (updateDoc) {
                     updateDoc.Status__c = 'Unlinked';
@@ -261,9 +299,8 @@ export default class docHubConnections extends LightningElement {
     _getConnectionList() {
         getConnectionList()
             .then(res => {
-                console.log('this.res', JSON.parse(JSON.stringify(res)));
-                this.dataConnection = JSON.parse(res);
-                console.log('this.dataConnection', JSON.parse(JSON.stringify(this.dataConnection)));
+                let resConnectionList = JSON.parse(res);
+                this.dataConnection = resConnectionList.result || [];
                 this.isLoading = false;
             })
             .catch(error => { console.log('getConnectionList Error', JSON.parse(JSON.stringify(error))); this.isLoading = false; });
@@ -276,9 +313,12 @@ export default class docHubConnections extends LightningElement {
         this.accessList = [];
         getDocumentInfo({ connectionId: JSON.stringify(this.currentConnection.id), documentId: row.id })
             .then((res) => {
-                let documentInfo = JSON.parse(res);
-                console.log(' getDocumentInfo res ', JSON.parse(res));
-                this.currentDocument = documentInfo.document;
+                let resDocumentInfo = JSON.parse(res);
+                if (resDocumentInfo.status && resDocumentInfo.status.toLowerCase() === 'error') {
+                    return Promise.reject(resDocumentInfo.error.message);
+                }
+                let documentInfo = resDocumentInfo.result || {};
+                this.currentDocument = documentInfo.document || {};
 
                 documentInfo.publish.forEach(el => {
                     let autoPub = el.reason === 'auto' ? ' automatically when opened' : '';
@@ -305,23 +345,42 @@ export default class docHubConnections extends LightningElement {
         this.currentRowDocument = [];
         this.folderBreadcrumbs = _FOLDERBREADCRUMBS.slice();
         this.searchKey = '';
-        //this.nextPageToken = 'root';
-
-        console.log('this.curssrentRow ', JSON.parse(JSON.stringify(this.currentConnection)));
         this.isLoading = true;
+        this.isAuthorizeRef = false;
+        this.isGoogleOAuth2 = false;
+        this.isGoogleServiceAccount = false;
+        this.fileName = '';
+        this.uploadedFiles = [];
         getConnectionIdInfo({ connectionId: this.currentConnection.id })
             .then((res) => {
-                console.log('resssss', JSON.parse(JSON.stringify(res)));
-                this.currentConnection = JSON.parse(res);
+                let connectionInfo = JSON.parse(res);
+                if (connectionInfo.status && connectionInfo.status.toLowerCase() === 'error') {
+                    return Promise.reject(connectionInfo.error.message);
+                }
+                this.currentConnection = connectionInfo.result || {};
                 return this._getConnectionDocumentList();
             })
             .then((res) => {
+                let connectionDocInfo = JSON.parse(res);
+                if (connectionDocInfo.status && connectionDocInfo.status.toLowerCase() === 'error') {
+                    this.isAuthorizeRef = true;
+                    if (this.currentConnection.origin === 'GoogleDrive' && this.currentConnection.typeAccess === 'OAuth2') {
+                        this.isGoogleOAuth2 = true;
+                    }
+
+                    if (this.currentConnection.origin === 'GoogleDrive' && this.currentConnection.typeAccess === 'ServiceAccount') {
+                        this.isGoogleServiceAccount = true;
+                    }
+                }
+
                 this.isInfoConnection = true;
                 this.isLoading = false;
             })
-            .catch(error => {
+            .catch((error) => {
+                console.log('getConnectionIdInfo error', error);
+                this.isInfoConnection = true;
+                this.isAuthorizeRef = true;
                 this.isLoading = false;
-                console.log('Error', JSON.parse(JSON.stringify(error)));
             })
     }
 
@@ -334,11 +393,11 @@ export default class docHubConnections extends LightningElement {
         }
 
         if (folder) { param.folder = folder; }
-        console.log('_getConnectionDocumentList param ', param);
         return getConnectionDocumentList({
             generalData: param
         })
             .then((res) => {
+                if (res.status && res.status.toLowerCase() === 'error') { return Promise.resolve(JSON.stringify({ "status": "error", "message": res.error.message })); }
                 if (this.currentRowDocument.length > 0) {
                     this.currentRowDocument = [...this.currentRowDocument, ...JSON.parse(res.files)];
                 }
@@ -346,11 +405,12 @@ export default class docHubConnections extends LightningElement {
                     this.currentRowDocument = JSON.parse(res.files)
                 }
                 this.nextPageToken = res.nextPageToken;
-                return Promise.resolve();
+                return Promise.resolve(JSON.stringify({ "status": "success" }));
             })
-            .catch(error => {
+            .catch((error) => {
+                console.log('getConnectionDocumentList catch ', error);
                 this.isLoading = false;
-                return Promise.reject(error);
+                return Promise.resolve({ "status": "error", "message": error });
             })
     }
 
@@ -382,13 +442,13 @@ export default class docHubConnections extends LightningElement {
     handleEventItem(e) {
         switch (e.detail.method) {
             case 'EditDocument':
-                this.getDocumentInfo({ id: e.detail.id });
+                this.getDocumentInfo(e.detail);
                 break;
             case 'Unlinked':
-                this.unlinkDocument({ id: e.detail.id, sfid: e.detail.sfid });
+                this._unlinkDocument(e.detail);
                 break;
             case 'Linked':
-                this.linkDocument({ id: e.detail.id, sfid: e.detail.sfid });
+                this._linkDocument(e.detail);
                 break;
             case 'OpenFolder':
                 this.openFolder(e.detail);

@@ -5,20 +5,32 @@
     </div>
 
     <template if:false={isInfoConnection}>
-        <div class="slds-page-header">
-            <div class="slds-grid">
-                <div class="slds-col slds-has-flexi-truncate">
-                    <h1 class="slds-text-heading_medium" title="Doc Hub Connections">Doc Hub Connections</h1>
-                </div>
-                <div class="slds-col slds-no-flex slds-align-top">
-                    <div class="slds-button-group" role="group">
+        <article class="slds-card">
+            <div class="slds-card__header slds-grid">
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__figure">
+                        <span class="slds-icon_container slds-icon-standard-hierarchy" title="Doc Hub Connections">
+                            <svg class="slds-icon slds-icon_large" aria-hidden="true">
+                                <use
+                                    xlink:href="/apexpages/slds/latest/assets/icons/standard-sprite/svg/symbols.svg#hierarchy">
+                                </use>
+                            </svg>
+                            <span class="slds-assistive-text">Doc Hub Connections</span>
+                        </span>
+                    </div>
+                    <div class="slds-media__body">
+                        <h2 class="slds-card__header-title">
+                            <span>Doc Hub Connections</span>
+                        </h2>
+                    </div>
+                    <div class="slds-no-flex">
                         <lightning-button variant="brand-outline" label="Add Connection" title="Add Connection"
                             icon-name="utility:add" onclick={handleAddModal}>
                         </lightning-button>
                     </div>
-                </div>
+                </header>
             </div>
-        </div>
+        </article>
 
         <div class="slds-var-m-bottom_medium"></div>
         <div class="slds-box slds-color__background_gray-1">
@@ -28,7 +40,7 @@
                         onclick={openConnection}>
                         <article class="slds-tile slds-media">
                             <div class="slds-media__figure">
-                                <lightning-icon icon-name="custom:custom57" size="large"></lightning-icon>
+                                <lightning-icon icon-name="custom:custom57" size="medium"></lightning-icon>
                             </div>
                             <div class="slds-media__body">
                                 <h1 class="slds-text-heading_medium slds-truncate" title={con.name}>
@@ -56,7 +68,6 @@
 
     <template if:true={isInfoConnection}>
         <div class="slds-page-header">
-
             <div class="slds-grid slds-grid_align-spread">
                 <div class="slds-col">
                     <lightning-button variant="base" label="Back" title="back to connections" icon-name="utility:back"
@@ -64,7 +75,7 @@
                     </lightning-button>
                 </div>
                 <div class="slds-col">
-                    <h1 class="slds-page-header__title slds-m-right_small slds-text-heading_large slds-truncate slds-text-align_center"
+                    <h1 class="slds-page-header__title slds-var-m-right_small slds-text-heading_large slds-truncate slds-text-align_center"
                         title="Doc Hub Connections">Connection {currentConnection.name} -
                         {currentConnection.email} ({currentConnection.origin} : {currentConnection.typeAccess})</h1>
                 </div>
@@ -73,73 +84,114 @@
                 </div>
             </div>
         </div>
-        <div class="slds-m-bottom_medium"></div>
+        <div class="slds-var-m-bottom_medium"></div>
         <div class="slds-box slds-color__background_gray-1">
-            <div class="slds-grid slds-gutters">
-                <div class="slds-col slds-size_1-of-3">
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Links</span>
+            <template if:false={isAuthorizeRef}>
+                <div class="slds-grid slds-gutters">
+                    <div class="slds-col slds-size_1-of-3">
+                        <div
+                            class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                            <div class="test-id__field-label-container slds-form-element__label">
+                                <span class="test-id__field-label">Links</span>
+                            </div>
+                            <div class="slds-form-element__control">
+                                <span
+                                    class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                    <lightning-formatted-number value={currentConnection.links}>
+                                    </lightning-formatted-number>
+                                </span>
+                            </div>
                         </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-number value={currentConnection.links}>
-                                </lightning-formatted-number>
-                            </span>
+                    </div>
+
+                    <div class="slds-col slds-size_1-of-3">
+                        <div
+                            class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                            <div class="test-id__field-label-container slds-form-element__label">
+                                <span class="test-id__field-label">Shows</span>
+                            </div>
+                            <div class="slds-form-element__control">
+                                <span
+                                    class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                    <lightning-formatted-number value={currentConnection.shows}>
+                                    </lightning-formatted-number>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="slds-col slds-size_1-of-3">
+                        <div
+                            class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
+                            <div class="test-id__field-label-container slds-form-element__label">
+                                <span class="test-id__field-label">Publishes</span>
+                            </div>
+                            <div class="slds-form-element__control">
+                                <span
+                                    class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
+                                    <lightning-formatted-number value={currentConnection.publishes}>
+                                    </lightning-formatted-number>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="slds-col slds-size_1-of-3">
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Shows</span>
-                        </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-number value={currentConnection.shows}>
-                                </lightning-formatted-number>
-                            </span>
-                        </div>
+                <div class="slds-var-m-top_medium"></div>
+
+                <template if:true={isCurrentRowDocument}>
+                    <div onkeyup={handleKeyUp}>
+                        <lightning-input type="search" class="slds-var-m-bottom_small" label="Search"></lightning-input>
                     </div>
-                </div>
-
-                <div class="slds-col slds-size_1-of-3">
-                    <div
-                        class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_stacked">
-                        <div class="test-id__field-label-container slds-form-element__label">
-                            <span class="test-id__field-label">Publishes</span>
+                    <lightning-breadcrumbs class="slds-var-m-bottom_small">
+                        <template for:each={folderBreadcrumbs} for:item="crumbs">
+                            <lightning-breadcrumb key={crumbs.id} label={crumbs.label} name={crumbs.name}
+                                data-id={crumbs.id} onclick={handleNavigateTo}>
+                            </lightning-breadcrumb>
+                        </template>
+                    </lightning-breadcrumbs>
+                    <c-document-list items={currentRowDocument} onrefreshlist={refreshListDocumet}
+                        oneventitem={handleEventItem}></c-document-list>
+                </template>
+            </template>
+            <template if:true={isAuthorizeRef}>
+                <div class="slds-var-m-around_large">
+                    <template if:true={isGoogleServiceAccount}>
+                        <div class="slds-grid slds-gutters slds-var-m-bottom_medium">
+                            <div class="slds-col">
+                            </div>
+                            <div class="slds-col slds-text-align_center">
+                                <lightning-file-upload accept={acceptedFormats} label="Attach JSON file" required
+                                    name="fileUploader" record-id={recordIdFileServiceAccount}
+                                    onuploadfinished={handleUploadFinished}>
+                                </lightning-file-upload>
+                            </div>
+                            <div class="slds-col">
+                            </div>
                         </div>
-                        <div class="slds-form-element__control">
-                            <span
-                                class="test-id__field-value slds-form-element__static slds-grow word-break-ie11 is-read-only">
-                                <lightning-formatted-number value={currentConnection.publishes}>
-                                </lightning-formatted-number>
-                            </span>
+                        <div class="slds-grid slds-gutters">
+                            <div class="slds-col">
+                            </div>
+                            <div class="slds-col slds-text-align_center">
+                                {fileName}
+                            </div>
+                            <div class="slds-col">
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="slds-m-top--x-medium"></div>
-
-            <template if:true={isCurrentRowDocument}>
-                <div onkeyup={handleKeyUp}>
-                    <lightning-input type="search" class="slds-m-bottom_small" label="Search"></lightning-input>
-                </div>
-                <lightning-breadcrumbs class="slds-m-bottom_small">
-                    <template for:each={folderBreadcrumbs} for:item="crumbs">
-                        <lightning-breadcrumb key={crumbs.id} label={crumbs.label} name={crumbs.name}
-                            data-id={crumbs.id} onclick={handleNavigateTo}>
-                        </lightning-breadcrumb>
                     </template>
-                </lightning-breadcrumbs>
-                <c-document-list items={currentRowDocument} onrefreshlist={refreshListDocumet}
-                    oneventitem={handleEventItem}></c-document-list>
+                </div>
+                <div class="slds-grid slds-gutters slds-var-m-bottom_medium">
+                    <div class="slds-col">
+                    </div>
+                    <div class="slds-col slds-text-align_center">
+                        <lightning-button label="Authorize" variant="brand" onclick={onAuthorize}
+                            disabled={isAuthorizeAvail}>
+                        </lightning-button>
+                    </div>
+                    <div class="slds-col">
+                    </div>
+                </div>
+
             </template>
         </div>
     </template>
@@ -161,24 +213,42 @@
                         <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Add Connection
                         </h2>
                     </header>
-                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                    <div class="slds-modal__content slds-var-p-around_medium" id="modal-content-id-1">
 
                         <lightning-combobox label="Type access" data-field="typeAccessForGoogle" required
                             options={typeAccessForGoogle} onchange={handleFieldChange}></lightning-combobox>
                         <lightning-input type="text" data-field="connectionName" required label="Connection Name">
                         </lightning-input>
                         <template if:true={isGoogleServiceAccount}>
-                            <lightning-file-upload accept={acceptedFormats} label="Attach receipt" required
-                                name="fileUploader" record-id={recordIdFileServiceAccount}
-                                onuploadfinished={handleUploadFinished}>
-                            </lightning-file-upload>
+                            <div class="slds-grid slds-gutters slds-var-m-bottom_medium">
+                                <div class="slds-col">
+                                </div>
+                                <div class="slds-col slds-text-align_center">
+                                    <lightning-file-upload accept={acceptedFormats} label="Attach JSON file" required
+                                        name="fileUploader" record-id={recordIdFileServiceAccount}
+                                        onuploadfinished={handleUploadFinished}>
+                                    </lightning-file-upload>
+                                </div>
+                                <div class="slds-col">
+                                </div>
+                            </div>
+                            <div class="slds-grid slds-gutters">
+                                <div class="slds-col">
+                                </div>
+                                <div class="slds-col slds-text-align_center">
+                                    {fileName}
+                                </div>
+                                <div class="slds-col">
+                                </div>
+                            </div>
                         </template>
                     </div>
                     <footer class="slds-modal__footer">
-                        <lightning-button label="Add" variant="brand" onclick={onAddConnection}>
+                        <lightning-button label="Add" variant="brand" onclick={onAddConnection}
+                            disabled={isAuthorizeAvail}>
                         </lightning-button>
                         <lightning-button label="Cancel" variant="neutral" onclick={handleAddModal}
-                            class='slds-m-left_x-small'></lightning-button>
+                            class='slds-var-m-left_x-small'></lightning-button>
                     </footer>
                 </div>
             </section>
@@ -204,7 +274,7 @@
                             {currentDocument.name}
                         </h2>
                     </header>
-                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-2">
+                    <div class="slds-modal__content slds-var-p-around_medium" id="modal-content-id-2">
 
                         <div class="slds-grid slds-gutters">
                             <div class="slds-col slds-size_1-of-2">
@@ -328,11 +398,11 @@
                                 </template>
                             </div>
                         </div>
-                        <div class="slds-m-top--x-medium"></div>
+                        <div class="slds-var-m-top_medium"></div>
                         <template if:true={isPublishList}>
-                            <div class="slds-grid slds-gutters slds-p-around_small">
+                            <div class="slds-grid slds-gutters slds-var-p-around_small">
                                 <div class="slds-col slds-box slds-theme_default">
-                                    <div class="slds-m-bottom_small slds-text-title_bold">Publish History</div>
+                                    <div class="slds-var-m-bottom_small slds-text-title_bold">Publish History</div>
                                     <template for:each={publishList} for:item="pb">
                                         <p key={pb.id}>{pb.name}</p>
                                     </template>
@@ -341,9 +411,9 @@
                         </template>
 
                         <template if:true={isAccessList}>
-                            <div class="slds-grid slds-gutters slds-p-around_small">
+                            <div class="slds-grid slds-gutters slds-var-p-around_small">
                                 <div class="slds-col slds-box slds-theme_default">
-                                    <div class="slds-m-bottom_small slds-text-title_bold">Access History</div>
+                                    <div class="slds-var-m-bottom_small slds-text-title_bold">Access History</div>
                                     <template for:each={accessList} for:item="ac">
                                         <p key={ac.id}>{ac.name}</p>
                                     </template>

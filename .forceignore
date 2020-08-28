@@ -3,6 +3,9 @@
 #
 
 package.xml
+**/profiles
+**/namedCredentials
+**/settings/Address.settings-meta.xml
 
 # LWC configuration files
 **/jsconfig.json

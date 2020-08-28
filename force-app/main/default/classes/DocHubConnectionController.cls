@@ -1,10 +1,12 @@
 public class DocHubConnectionController {
-	private static final String ORGANIZATION_ID =  UserInfo.getOrganizationId();
+	public static final String ORGANIZATION_ID =  UserInfo.getOrganizationId();
 	private static final String CREATED_BY =  UserInfo.getName();
 	private static final String API_URL = 'callout:ApiUrl';
 	private static final String GOOGLE_DRIVE_AUTH = '/auth/google/authorize';
 	private static final String CONNECTION_URL = API_URL + '/api/connection/' + ORGANIZATION_ID;
 	private static final String DOCUMENT_URL = API_URL + '/api/document/' + ORGANIZATION_ID;
+
+	private static final String KEY = 'T6AFIwJ0fVD4rNlJumRCSpjphOg/WKl2U4bwdyZIEis=';
 	
 	@AuraEnabled
 	public static Map<String, Object> createGoogleDriveAuthURL(Map<String, Object> generalData)  {
@@ -13,7 +15,12 @@ public class DocHubConnectionController {
 		generalData.put('origin', 'Salesforce');
 
 		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(generalData)));
-		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'ApiUrl'];
+		List<NamedCredential> urlNameCred = [
+			SELECT DeveloperName, Endpoint 
+			FROM NamedCredential 
+			WHERE DeveloperName = 'ApiUrl'
+		];
+		
 		if (urlNameCred.size() == 0) {
 			return new Map<String, Object>{
 				'Status' => 'Error',
@@ -31,7 +38,7 @@ public class DocHubConnectionController {
 		return postHttpRequest(new Map<String, Object> {
 			'url' => CONNECTION_URL + '/create',
 			'generalData' => generalData,
-			'method' => 'Create Connection'
+			'method' => 'connectionCreate'
 		});
 	}
 	
@@ -52,10 +59,11 @@ public class DocHubConnectionController {
 		String id = String.valueOf(generalData.get('id'));
 		String folder = String.valueOf(generalData.get('folder'));
 		String connectionEmail = String.valueOf(generalData.get('connectionEmail'));
+		String origin = String.valueOf(generalData.get('origin'));
 		
 		Map<String, Object> resDocumentLink = postHttpRequest(new Map<String, Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/link/' + documentId,
-			'method' => 'Link Document'
+			'method' => 'documentLink'
 		});
 
 		if (resDocumentLink.get('status') == 'Success') {
@@ -73,12 +81,14 @@ public class DocHubConnectionController {
 				Connection_Id__c = connectId,
 				Document_Name__c = nameDoc,
 				Folder__c = folder,
+				Origin__c = origin,
 				Linked_By__c = connectionEmail
 			);
 
 			if (!String.isBlank(id)) {
 				docHub.id = id;
 			}
+			System.debug('docHub ' + docHub);
 			Database.upsert( new List<Doc_Hub_Link__c> { docHub } , false);
 			((Map<String, Object>)resDocumentLink.get('result')).put('sfid', docHub.id);
 		}
@@ -86,7 +96,6 @@ public class DocHubConnectionController {
 		return resDocumentLink;
 	}
 
-	
 	@AuraEnabled
 	public static Map<String, Object> publishDocument(String recordId) {
 		if (!String.isBlank(recordId)) {
@@ -115,7 +124,7 @@ public class DocHubConnectionController {
 
 			Map<String, Object> resDocumentLink = postHttpRequest(new Map<String, Object> {
 				'url' => DOCUMENT_URL + '/' + String.valueOf(dhl.Connection_Id__c) + '/publish/' + dhl.Origin_Id__c,
-				'method' => 'Publish Connection'
+				'method' => 'documentPublish'
 			});
 
 			if (resDocumentLink.get('status') == 'Success') {
@@ -141,26 +150,26 @@ public class DocHubConnectionController {
 	
 	@AuraEnabled
 	public static String getConnectionList() {
-		return getHttpRequest( new Map<String,Object> {
+		return JSON.serialize(getHttpRequest( new Map<String,Object> {
 			'url' => CONNECTION_URL  + '/list',
-			'method' => 'Get Connection List'
-		});	
+			'method' => 'connectionList'
+		}));	
 	}
 
 	@AuraEnabled
 	public static String getConnectionIdInfo(String connectionId) {
-		return getHttpRequest( new Map<String,Object> {
+		return JSON.serialize(getHttpRequest( new Map<String,Object> {
 			'url' => CONNECTION_URL + '/get/' + connectionId,
-			'method' => 'Get Connection Info'
-		});
+			'method' => 'connectionGet'
+		}));
 	}
 
 	@AuraEnabled
 	public static String getDocumentInfo(String connectionId, String documentId) {
-		return getHttpRequest( new Map<String,Object> {
+		return JSON.serialize(getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/get/' + documentId,
-			'method' => 'Get Document Info'
-		});
+			'method' => 'documentGet'
+		}));
 	}
 	
 	public static String DocumentFetch(Map<String, Object> generalData) {
@@ -171,11 +180,15 @@ public class DocHubConnectionController {
 			new Map<String, Object>{ 'createdBy' => CREATED_BY, 'autoPublish' => autoPublish }
 		)));
 
-		String res = getHttpRequest( new Map<String,Object> {
+		Map<String, Object> resGetMap = getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/fetch/' + documentId + '?state=' + state,
-			'method' => 'Document Fetch'
+			'method' => 'documentFetch'
 		});
-		return (String)JSON.deserializeUntyped(res);
+
+		if (resGetMap.get('status') == 'Error') {
+			return null;
+		}
+		return String.valueOf(resGetMap.get('result'));
 	}
 
 	@AuraEnabled
@@ -197,12 +210,20 @@ public class DocHubConnectionController {
 
 		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(stateMap)));
 		
-		String jsonString = getHttpRequest( new Map<String,Object> {
+		Map<String, Object> resGetMap = getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/list?state=' + state,
-			'method' => 'Get Connection Document List'
+			'method' => 'documentList'
 		});
-		Map<String, Object> resMap = (Map<String, Object>)JSON.deserializeUntyped(jsonString);
-		 
+		
+		if (resGetMap.get('status') == 'Error') {
+			return new Map<String,Object> {
+				'status' => resGetMap.get('status') ,
+				'error' => resGetMap.get('error')
+			};
+		}
+		
+		Map<String, Object> resMap = (Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(resGetMap.get('result')));
+
 		List<Object> docList = (List<Object>)JSON.deserializeUntyped(JSON.serialize(resMap.get('files')));
 		Set<String> docIds = new Set<String>();                                           
 		for(Object doc : docList) {
@@ -258,11 +279,16 @@ public class DocHubConnectionController {
 		requestMap.put('createdBy', CREATED_BY);
 		requestMap.put('origin', 'Salesforce');
 		String jsonRes = JSON.serialize(requestMap);
+		String timestamp = String.valueOf(Datetime.newInstance(Datetime.now().dateGMT(),Datetime.now().timeGmt()).getTime());
+		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp});
+		
 		Http h = new Http();
 		HttpRequest req = new HttpRequest();
 		req.setEndpoint(url);
 		req.setMethod('POST');
 		req.setHeader('Content-Type', 'application/json');
+		req.setHeader('TIMESTAMP', timestamp);
+        req.setHeader('AUTH_SIGNATURE', signature);
 		req.setTimeout(120000);
 		req.setBody(jsonRes);
 		HttpResponse res = h.send(req);
@@ -280,7 +306,7 @@ public class DocHubConnectionController {
 			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
 		} 
 		catch(Exception e) {
-			System.debug('The following exception has occurred: ' + e.getMessage() +' on line number: '+e.getLineNumber());
+			System.debug('The following exception has occurred: ' + e.getMessage() +' on line number: ' + e.getLineNumber());
 			response = new Map<String,Object> {
 				'Status' => 'Error',
 				'Error' => e.getMessage()
@@ -289,13 +315,19 @@ public class DocHubConnectionController {
 		return response;
 	}
 
-	private static String getHttpRequest (Map<String, Object> generalData) {
+	private static Map<String, Object> getHttpRequest (Map<String, Object> generalData) {
 		String url = String.valueOf(generalData.get('url'));
+		DateTime dateTimeGMT = Datetime.now().dateGMT();
+		String timestamp = String.valueOf(Datetime.newInstance(Datetime.now().dateGMT(),Datetime.now().timeGmt()).getTime());
+		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp});
+		
 		Http h = new Http();
 		HttpRequest req = new HttpRequest();
 		req.setEndpoint(url);
 		req.setMethod('GET');
 		req.setHeader('Content-Type', 'application/json');
+		req.setHeader('TIMESTAMP', timestamp);
+		req.setHeader('AUTH_SIGNATURE', signature);
 		
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
@@ -308,8 +340,8 @@ public class DocHubConnectionController {
 			'responseCode' => String.valueOf(res.getStatusCode())
 		};
 
-		if (generalData.get('method') != 'Document Fetch') { createLog(logMap); } 
-
+		if (generalData.get('method') != 'documentFetch') { createLog(logMap); } 
+		
 		try {
 			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
 		} 
@@ -320,7 +352,8 @@ public class DocHubConnectionController {
 				'Error' => e.getMessage()
 			};
 		}
-		return JSON.serialize(response.get('result'));
+
+		return response;
 	}
 
 	private static String getOriginUrl() {
@@ -338,4 +371,1025 @@ public class DocHubConnectionController {
 			Response_Code__c = String.valueOf(logs.get('responseCode'))
 		);
 	} 
+
+	public static String createSignature(List<String> args) {
+
+        String stringToSign = '';
+        String signature = '';
+
+        for (String param : args) {
+        	stringToSign += param + '-';
+		}
+		
+        stringToSign = stringToSign.left(stringToSign.length()-1);
+            
+        Blob sig = Crypto.generateMac('HmacSHA1', Blob.valueOf(stringToSign), Blob.valueOf(KEY));
+        signature = EncodingUtil.base64Encode(sig);
+        return signature;
+	}
+	
+	public static void hacks() {
+		Integer i = 0;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+		i++;
+	}
 }

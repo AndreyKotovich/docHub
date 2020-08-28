@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <customValue>
-        <fullName>Google Drive</fullName>
+        <fullName>GoogleDrive</fullName>
         <default>false</default>
-        <label>Google Drive</label>
+        <label>GoogleDrive</label>
     </customValue>
     <masterLabel>Origin</masterLabel>
     <sorted>false</sorted>
