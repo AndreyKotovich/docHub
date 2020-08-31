@@ -1,5 +1,12 @@
 <template>
-	<div class="slds-box list" data-id="listScroll"  onscroll={handleScroll}>
+	<div class="slds-text-title_caps">
+		<div class="slds-grid slds-text-body_small" style="margin: 0 10px; margin-left: 0px; padding: 4px;">
+			<div class="slds-col slds-size_8-of-12">Name</div>
+			<div class="slds-col slds-size_2-of-12" style="padding: 0 3px;">Owner</div>
+			<div class="slds-col slds-size_2-of-12">Last modified</div>
+		</div>
+	</div>
+	<div class="slds-box list" data-id="listScroll" onscroll={handleScroll}>
 		<template for:each={items} for:item="item" for:index="idx">
 			<div key={item.name}>
 				<c-document-item key={item.name} item={item} index={idx} oneventitem={handleEventItem}>
