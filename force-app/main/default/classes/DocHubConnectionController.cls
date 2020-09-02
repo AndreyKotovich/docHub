@@ -43,8 +43,8 @@ public class DocHubConnectionController {
 	}
 	
 	@AuraEnabled
-	public static Map<String, Object> unlinkDocument(String Id) {
-		update new Doc_Hub_Link__c(Id = Id, Status__c = 'Unlinked');
+	public static Map<String, Object> unlinkDocument(String Id, String reason) {
+		update new Doc_Hub_Link__c(Id = Id, Status__c = 'Unlinked', Reason__c = reason);
 		
 		return new Map<String, Object> {
 			'status' => 'Success',
@@ -82,7 +82,8 @@ public class DocHubConnectionController {
 				Document_Name__c = nameDoc,
 				Folder__c = folder,
 				Origin__c = origin,
-				Linked_By__c = connectionEmail
+				Linked_By__c = connectionEmail,
+				Reason__c = ''
 			);
 
 			if (!String.isBlank(id)) {
@@ -172,7 +173,7 @@ public class DocHubConnectionController {
 		}));
 	}
 	
-	public static String DocumentFetch(Map<String, Object> generalData) {
+	public static Map<String, Object> DocumentFetch(Map<String, Object> generalData) {
 		String connectionId = String.valueOf(generalData.get('connectionId'));
 		String documentId  = String.valueOf(generalData.get('documentId')); 
 		Boolean autoPublish = Boolean.valueOf(generalData.get('autoPublish'));
@@ -180,15 +181,10 @@ public class DocHubConnectionController {
 			new Map<String, Object>{ 'createdBy' => CREATED_BY, 'autoPublish' => autoPublish }
 		)));
 
-		Map<String, Object> resGetMap = getHttpRequest( new Map<String,Object> {
+		return getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/fetch/' + documentId + '?state=' + state,
 			'method' => 'documentFetch'
 		});
-
-		if (resGetMap.get('status') == 'Error') {
-			return null;
-		}
-		return String.valueOf(resGetMap.get('result'));
 	}
 
 	@AuraEnabled
@@ -296,7 +292,7 @@ public class DocHubConnectionController {
 		
 		createLog(new Map<String,String> {
 			'method' => String.valueOf(generalData.get('method')),
-			'request' => jsonRes,
+			'request' => String.valueOf(req),
 			'response' => resJSON,
 			'responseCode' => String.valueOf(res.getStatusCode())
 		});
@@ -333,20 +329,17 @@ public class DocHubConnectionController {
 		String resJSON = res.getBody();
 		Map<String,Object> response = new Map<String,Object>();
 		
-		Map<String,String> logMap = new Map<String,String> {
+		createLog(new Map<String,String> {
 			'method' => String.valueOf(generalData.get('method')),
-			'request' => url,
+			'request' => String.valueOf(req),
 			'response' => resJSON,
 			'responseCode' => String.valueOf(res.getStatusCode())
-		};
+		});
 
-		if (generalData.get('method') != 'documentFetch') { createLog(logMap); } 
-		
 		try {
 			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
 		} 
 		catch(Exception e) {
-			System.debug('The following exception has occurred: ' + e.getMessage() +' on line number: '+e.getLineNumber());
 			response = new Map<String,Object> {
 				'Status' => 'Error',
 				'Error' => e.getMessage()

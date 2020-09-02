@@ -1,10 +1,18 @@
 public with sharing class DocumentViewPageController {
 	public String fileLink { get; set; }
+	public String errorMessage { get; set; }
+
+	Boolean isError;
+    Boolean isFileLink;
+    
+    public Boolean getIsError() { return !String.isBlank(this.errorMessage); }
+	public Boolean getIsFileLink() { return !String.isBlank(this.fileLink); }
 	
-	public DocumentViewPageController() {
+	public void loadDocument() {
 		String recordId = ApexPages.CurrentPage().getparameters().get('Id');
 		if (String.isBlank(recordId)) {
-			ApexPages.addmessage(new ApexPages.message(ApexPages.severity.WARNING,'Sorry, something went wrong'));
+			this.errorMessage = 'Sorry, something went wrong';
+			return;
 		}
 		Doc_Hub_Link__c dhl = [
 			SELECT 
@@ -14,15 +22,26 @@ public with sharing class DocumentViewPageController {
 		];
 
 		if (String.isBlank(dhl.Connection_Id__c) || String.isBlank(dhl.Origin_Id__c)) {
-			ApexPages.addmessage(new ApexPages.message(ApexPages.severity.WARNING,'Sorry, something went wrong'));
+			this.errorMessage = 'Sorry, something went wrong';
+			return;
 		}
-	   
-		this.fileLink = DocHubConnectionController.DocumentFetch(
+
+		Map<String, Object> resMap = DocHubConnectionController.DocumentFetch(
 			new Map<String, Object> {
 				'connectionId' => dhl.Connection_Id__c,
 				'documentId' => dhl.Origin_Id__c,
 				'autoPublish' => dhl.Auto_Publish__c
 			});
+		
+		if (resMap.get('status') == 'Error') {
+			this.errorMessage = String.valueOf(((Map<String, Object>)resMap.get('error')).get('message'));
+			if (String.valueOf(((Map<String, Object>)resMap.get('error')).get('message')) == 'File was deleted') {
+				Map<String, Object> resUnlink = DocHubConnectionController.unlinkDocument(recordId, 'File was deleted');
+			}
+			return;
+		}
+
+		this.fileLink = String.valueOf(resMap.get('result'));
 		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'ApiUrl'];
 		if (urlNameCred.size() != 0 && !String.isBlank(this.fileLink)) {
 			String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(new Map<String, Object>{ 'createdBy' => UserInfo.getName() })));
@@ -30,7 +49,8 @@ public with sharing class DocumentViewPageController {
 			this.fileLink = System.EncodingUtil.urlEncode(this.fileLink, 'UTF-8');
 		}
 		if (String.isBlank(this.fileLink)) {
-			ApexPages.addmessage(new ApexPages.message(ApexPages.severity.WARNING,'Sorry, something went wrong'));
+			this.errorMessage = 'Sorry, something went wrong';
+			return;
 		}
 	}
 

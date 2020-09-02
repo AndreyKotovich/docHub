@@ -1,4 +1,19 @@
-<apex:page controller="DocumentViewPageController">
-    <apex:pageMessages />
-    <iframe src="{!URLFOR($Resource.pdfjs, '/web/viewer.html')}?file={!fileLink}"  style=" width: 100vw;height: 100vh;border: none;"/>
+<apex:page controller="DocumentViewPageController" action="{!loadDocument}">
+    <apex:slds/>
+    <div style="{!IF(isError, 'display:block', 'display:none')}">
+        <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert" xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink">
+            <span class="slds-assistive-text">error</span>
+            <span class="slds-icon_container slds-icon-utility-error slds-m-right_x-small" title="Description of icon when needed">
+                <svg class="slds-icon slds-icon_x-small" aria-hidden="true">
+                    <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#error"></use>
+                </svg>
+            </span>
+            <h2>{!errorMessage}</h2>
+        </div>
+    </div>
+    <div style="{!IF(isFileLink, 'display:block', 'display:none')}">
+        <iframe src="{!URLFOR($Resource.pdfjs, '/web/viewer.html')}?file={!fileLink}" style="width: 100vw; height: 100vh;border: none;"
+        />
+    </div>
 </apex:page>

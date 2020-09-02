@@ -281,7 +281,7 @@ export default class docHubConnections extends LightningElement {
 
     _unlinkDocument(doc) {
         this.isLoading = true;
-        unlinkDocument({ Id: doc.sfid })
+        unlinkDocument({ Id: doc.sfid, reason: 'Manually' })
             .then((res) => {
                 let updateDoc = this._currentRowDocument.find(e => e.sfid === doc.sfid);
                 if (updateDoc) {
