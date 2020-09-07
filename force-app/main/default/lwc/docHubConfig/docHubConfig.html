@@ -1,0 +1,37 @@
+<template>
+    <div if:true={isLoading}>
+        <lightning-spinner size="medium" variant="brand"></lightning-spinner>
+    </div>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-standard-custom" title="Doc Hub Config">
+                        <svg class="slds-icon slds-icon_large" aria-hidden="true">
+                            <use
+                                xlink:href="/apexpages/slds/latest/assets/icons/standard-sprite/svg/symbols.svg#custom">
+                            </use>
+                        </svg>
+                        <span class="slds-assistive-text">Doc Hub Config</span>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h1 class="slds-card__header-title">
+                        <span>Doc Hub Config</span>
+                    </h1>
+                </div>
+            </header>
+        </div>
+    </article>
+
+    <div class="slds-var-m-bottom_medium"></div>
+    <div class="slds-box slds-color__background_gray-1 slds-text-align_center">
+        <template if:true={isRegisterStatus}>
+            <strong>Connection Status: </strong><span class="slds-badge slds-theme_success">Connected</span>
+        </template>
+        <template if:false={isRegisterStatus}>
+            <strong>Connection Status: </strong><span class="slds-badge slds-theme_error">Not Connected {registerMessage}</span>
+        </template>
+    </div>
+    
+</template>

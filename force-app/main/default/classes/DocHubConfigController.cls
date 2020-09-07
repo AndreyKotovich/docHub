@@ -1,61 +1,18 @@
-public with sharing class DocumentViewPageController {
-	public String fileLink { get; set; }
-	public String errorMessage { get; set; }
+public with sharing class DocHubConfigController {
+    @AuraEnabled
+    public static Boolean getRegisterStatus() {
+        OrgSignatureKey__c orgSignatureKey = OrgSignatureKey__c.getOrgDefaults();
+        System.debug('orgSignatureKey ' + orgSignatureKey);
+        if (!String.isBlank(orgSignatureKey.key__c)) { return false; }
+        return false;
+    }
 
-	Boolean isError;
-	Boolean isFileLink;
-	
-	public Boolean getIsError() { return !String.isBlank(this.errorMessage); }
-	public Boolean getIsFileLink() { return !String.isBlank(this.fileLink); }
-	
-	public void loadDocument() {
-		String recordId = ApexPages.CurrentPage().getparameters().get('Id');
-		if (String.isBlank(recordId)) {
-			this.errorMessage = 'Sorry, something went wrong';
-			return;
-		}
-		Doc_Hub_Link__c dhl = [
-			SELECT 
-				Id, Connection_Id__c, Origin_Id__c, Auto_Publish__c
-			FROM Doc_Hub_Link__c 
-			WHERE Id = :recordId
-		];
-
-		if (String.isBlank(dhl.Connection_Id__c) || String.isBlank(dhl.Origin_Id__c)) {
-			this.errorMessage = 'Sorry, something went wrong';
-			return;
-		}
-
-		Map<String, Object> resMap = DocHubConnectionController.DocumentFetch(
-			new Map<String, Object> {
-				'connectionId' => dhl.Connection_Id__c,
-				'documentId' => dhl.Origin_Id__c,
-				'autoPublish' => dhl.Auto_Publish__c
-			});
-		
-		if (resMap.get('status') == 'Error') {
-			this.errorMessage = String.valueOf(((Map<String, Object>)resMap.get('error')).get('message'));
-			if (String.valueOf(((Map<String, Object>)resMap.get('error')).get('message')) == 'File was deleted') {
-				Map<String, Object> resUnlink = DocHubConnectionController.unlinkDocument(recordId, 'File was deleted');
-			}
-			return;
-		}
-
-		this.fileLink = String.valueOf(resMap.get('result'));
-		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'ApiUrl'];
-		if (urlNameCred.size() != 0 && !String.isBlank(this.fileLink)) {
-			String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(new Map<String, Object>{ 'createdBy' => UserInfo.getName() })));
-			this.fileLink = urlNameCred[0].Endpoint + DocHubConnectionController.PROXY_TENANT + '/api/document/' + 
-				DocHubConnectionController.ORGANIZATION_ID + '/open/' + this.fileLink + '?state=' + state;
-			this.fileLink = System.EncodingUtil.urlEncode(this.fileLink, 'UTF-8');
-		}
-		if (String.isBlank(this.fileLink)) {
-			this.errorMessage = 'Sorry, something went wrong';
-			return;
-		}
-	}
-
-	public static void hacks() {
+    @AuraEnabled
+    public static Map<String,Object> registerOrg() {
+        return DocHubRegisterController.registerOrg();
+    }
+    
+    public static void hacks() {
 		Integer i = 0;
 		i++;
 		i++;

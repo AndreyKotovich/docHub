@@ -284,9 +284,7 @@ export default class docHubConnections extends LightningElement {
         unlinkDocument({ Id: doc.sfid, reason: 'Manually' })
             .then((res) => {
                 let updateDoc = this._currentRowDocument.find(e => e.sfid === doc.sfid);
-                if (updateDoc) {
-                    updateDoc.Status__c = 'Unlinked';
-                }
+                if (updateDoc) { updateDoc.Status__c = 'Unlinked'; }
                 this.isLoading = false;
                 this.showToastMessage(res.message, res.status, 'dismissable');
             })
@@ -321,7 +319,7 @@ export default class docHubConnections extends LightningElement {
                 this.currentDocument = documentInfo.document || {};
 
                 documentInfo.publish.forEach(el => {
-                    let autoPub = el.reason === 'auto' ? ' automatically when opened' : '';
+                    let autoPub = el.reason === 'auto' ? ` automatically when ${el.note}` : '';
                     let name = 'Published' + autoPub + ' by ' + el.user + ' on ' + this.formatDate(el.date);
                     this.publishList.push({ id: el.id, name: name });
                 });

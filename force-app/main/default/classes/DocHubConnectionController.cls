@@ -1,13 +1,13 @@
 public class DocHubConnectionController {
 	public static final String ORGANIZATION_ID =  UserInfo.getOrganizationId();
+	public static final String PROXY_TENANT = '/proxy/tenant/' + ORGANIZATION_ID;
 	private static final String CREATED_BY =  UserInfo.getName();
 	private static final String API_URL = 'callout:ApiUrl';
-	private static final String GOOGLE_DRIVE_AUTH = '/auth/google/authorize';
-	private static final String CONNECTION_URL = API_URL + '/api/connection/' + ORGANIZATION_ID;
-	private static final String DOCUMENT_URL = API_URL + '/api/document/' + ORGANIZATION_ID;
-
-	private static final String KEY = 'T6AFIwJ0fVD4rNlJumRCSpjphOg/WKl2U4bwdyZIEis=';
 	
+	private static final String GOOGLE_DRIVE_AUTH = PROXY_TENANT + '/auth/google/authorize';
+	private static final String CONNECTION_URL = API_URL + PROXY_TENANT + '/api/connection/' + ORGANIZATION_ID;
+	private static final String DOCUMENT_URL = API_URL + PROXY_TENANT + '/api/document/' + ORGANIZATION_ID;
+
 	@AuraEnabled
 	public static Map<String, Object> createGoogleDriveAuthURL(Map<String, Object> generalData)  {
 		generalData.put('orgId', ORGANIZATION_ID);
@@ -38,7 +38,7 @@ public class DocHubConnectionController {
 		return postHttpRequest(new Map<String, Object> {
 			'url' => CONNECTION_URL + '/create',
 			'generalData' => generalData,
-			'method' => 'connectionCreate'
+			'method' => 'connectioncreate'
 		});
 	}
 	
@@ -63,7 +63,7 @@ public class DocHubConnectionController {
 		
 		Map<String, Object> resDocumentLink = postHttpRequest(new Map<String, Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/link/' + documentId,
-			'method' => 'documentLink'
+			'method' => 'documentlink'
 		});
 
 		if (resDocumentLink.get('status') == 'Success') {
@@ -89,7 +89,7 @@ public class DocHubConnectionController {
 			if (!String.isBlank(id)) {
 				docHub.id = id;
 			}
-			System.debug('docHub ' + docHub);
+			
 			Database.upsert( new List<Doc_Hub_Link__c> { docHub } , false);
 			((Map<String, Object>)resDocumentLink.get('result')).put('sfid', docHub.id);
 		}
@@ -125,7 +125,7 @@ public class DocHubConnectionController {
 
 			Map<String, Object> resDocumentLink = postHttpRequest(new Map<String, Object> {
 				'url' => DOCUMENT_URL + '/' + String.valueOf(dhl.Connection_Id__c) + '/publish/' + dhl.Origin_Id__c,
-				'method' => 'documentPublish'
+				'method' => 'documentpublish'
 			});
 
 			if (resDocumentLink.get('status') == 'Success') {
@@ -153,7 +153,7 @@ public class DocHubConnectionController {
 	public static String getConnectionList() {
 		return JSON.serialize(getHttpRequest( new Map<String,Object> {
 			'url' => CONNECTION_URL  + '/list',
-			'method' => 'connectionList'
+			'method' => 'connectionlist'
 		}));	
 	}
 
@@ -161,7 +161,7 @@ public class DocHubConnectionController {
 	public static String getConnectionIdInfo(String connectionId) {
 		return JSON.serialize(getHttpRequest( new Map<String,Object> {
 			'url' => CONNECTION_URL + '/get/' + connectionId,
-			'method' => 'connectionGet'
+			'method' => 'connectionget'
 		}));
 	}
 
@@ -169,7 +169,7 @@ public class DocHubConnectionController {
 	public static String getDocumentInfo(String connectionId, String documentId) {
 		return JSON.serialize(getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/get/' + documentId,
-			'method' => 'documentGet'
+			'method' => 'documentget'
 		}));
 	}
 	
@@ -183,7 +183,7 @@ public class DocHubConnectionController {
 
 		return getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/fetch/' + documentId + '?state=' + state,
-			'method' => 'documentFetch'
+			'method' => 'documentfetch'
 		});
 	}
 
@@ -208,7 +208,7 @@ public class DocHubConnectionController {
 		
 		Map<String, Object> resGetMap = getHttpRequest( new Map<String,Object> {
 			'url' => DOCUMENT_URL + '/' + connectionId + '/list?state=' + state,
-			'method' => 'documentList'
+			'method' => 'documentlist'
 		});
 		
 		if (resGetMap.get('status') == 'Error') {
@@ -269,22 +269,22 @@ public class DocHubConnectionController {
 		return EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(convertJsonToMap)));
 	}
 
-	private static Map<String, Object> postHttpRequest (Map<String, Object> generalData) {
+	private static Map<String, Object> postHttpRequest(Map<String, Object> generalData) {
 		String url = String.valueOf(generalData.get('url'));
 		Map<String, Object> requestMap = generalData.containsKey('generalData') ? (Map<String,Object>) generalData.get('generalData') : new Map<String, Object>();
 		requestMap.put('createdBy', CREATED_BY);
 		requestMap.put('origin', 'Salesforce');
 		String jsonRes = JSON.serialize(requestMap);
 		String timestamp = String.valueOf(Datetime.newInstance(Datetime.now().dateGMT(),Datetime.now().timeGmt()).getTime());
-		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp});
+		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp}, null);
 		
 		Http h = new Http();
 		HttpRequest req = new HttpRequest();
 		req.setEndpoint(url);
 		req.setMethod('POST');
 		req.setHeader('Content-Type', 'application/json');
-		req.setHeader('TIMESTAMP', timestamp);
-        req.setHeader('AUTH_SIGNATURE', signature);
+		req.setHeader('timestamp', timestamp);
+		req.setHeader('auth-signature', signature);
 		req.setTimeout(120000);
 		req.setBody(jsonRes);
 		HttpResponse res = h.send(req);
@@ -311,19 +311,19 @@ public class DocHubConnectionController {
 		return response;
 	}
 
-	private static Map<String, Object> getHttpRequest (Map<String, Object> generalData) {
+	private static Map<String, Object> getHttpRequest(Map<String, Object> generalData) {
 		String url = String.valueOf(generalData.get('url'));
 		DateTime dateTimeGMT = Datetime.now().dateGMT();
 		String timestamp = String.valueOf(Datetime.newInstance(Datetime.now().dateGMT(),Datetime.now().timeGmt()).getTime());
-		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp});
+		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp}, null);
 		
 		Http h = new Http();
 		HttpRequest req = new HttpRequest();
 		req.setEndpoint(url);
 		req.setMethod('GET');
 		req.setHeader('Content-Type', 'application/json');
-		req.setHeader('TIMESTAMP', timestamp);
-		req.setHeader('AUTH_SIGNATURE', signature);
+		req.setHeader('timestamp', timestamp);
+		req.setHeader('auth-signature', signature);
 		
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
@@ -355,7 +355,7 @@ public class DocHubConnectionController {
 		return 'https://' + prefix.toLowerCase() + '.lightning.force.com';
 	}
 
-	private static void createLog (Map<String,String> logs) {
+	private static void createLog(Map<String,String> logs) {
 		insert new Doc_Hub_Log__c (
 			Date__c = Date.today(),
 			Method__c = String.valueOf(logs.get('method')),
@@ -365,20 +365,26 @@ public class DocHubConnectionController {
 		);
 	} 
 
-	public static String createSignature(List<String> args) {
+	public static String createSignature(List<String> args, String key) {
 
-        String stringToSign = '';
-        String signature = '';
+		String stringToSign = '';
+		String signature = '';
+		String signKey = key;
 
-        for (String param : args) {
-        	stringToSign += param + '-';
+		for (String param : args) {
+			stringToSign += param + '-';
 		}
 		
-        stringToSign = stringToSign.left(stringToSign.length()-1);
-            
-        Blob sig = Crypto.generateMac('HmacSHA1', Blob.valueOf(stringToSign), Blob.valueOf(KEY));
-        signature = EncodingUtil.base64Encode(sig);
-        return signature;
+		stringToSign = stringToSign.left(stringToSign.length()-1);
+		
+		if (String.isBlank(signKey)) {
+			OrgSignatureKey__c orgSignatureKey = OrgSignatureKey__c.getOrgDefaults();
+			signKey = orgSignatureKey != null ? orgSignatureKey.key__c : '';
+		}
+
+		Blob sig = Crypto.generateMac('HmacSHA1', Blob.valueOf(stringToSign), Blob.valueOf(signKey));
+		signature = EncodingUtil.base64Encode(sig);
+		return signature;
 	}
 	
 	public static void hacks() {

@@ -1,60 +1,66 @@
-public with sharing class DocumentViewPageController {
-	public String fileLink { get; set; }
-	public String errorMessage { get; set; }
-
-	Boolean isError;
-	Boolean isFileLink;
+public with sharing class DocHubRegisterController {
+	private static final String API_URL = 'callout:ApiUrl';
 	
-	public Boolean getIsError() { return !String.isBlank(this.errorMessage); }
-	public Boolean getIsFileLink() { return !String.isBlank(this.fileLink); }
-	
-	public void loadDocument() {
-		String recordId = ApexPages.CurrentPage().getparameters().get('Id');
-		if (String.isBlank(recordId)) {
-			this.errorMessage = 'Sorry, something went wrong';
-			return;
-		}
-		Doc_Hub_Link__c dhl = [
-			SELECT 
-				Id, Connection_Id__c, Origin_Id__c, Auto_Publish__c
-			FROM Doc_Hub_Link__c 
-			WHERE Id = :recordId
-		];
-
-		if (String.isBlank(dhl.Connection_Id__c) || String.isBlank(dhl.Origin_Id__c)) {
-			this.errorMessage = 'Sorry, something went wrong';
-			return;
-		}
-
-		Map<String, Object> resMap = DocHubConnectionController.DocumentFetch(
-			new Map<String, Object> {
-				'connectionId' => dhl.Connection_Id__c,
-				'documentId' => dhl.Origin_Id__c,
-				'autoPublish' => dhl.Auto_Publish__c
-			});
+	public static Map<String, Object> registerOrg() {
+		Map<String, Object> regKeyMap = httpRequest(new Map<String, Object> {
+			'method' => 'POST',
+			'url' => API_URL + '/register/key/' + DocHubConnectionController.ORGANIZATION_ID
+		});
 		
-		if (resMap.get('status') == 'Error') {
-			this.errorMessage = String.valueOf(((Map<String, Object>)resMap.get('error')).get('message'));
-			if (String.valueOf(((Map<String, Object>)resMap.get('error')).get('message')) == 'File was deleted') {
-				Map<String, Object> resUnlink = DocHubConnectionController.unlinkDocument(recordId, 'File was deleted');
-			}
-			return;
+		if (regKeyMap.get('status') != 'Success') { return regKeyMap; }
+		Map<String, Object> regTenantMap = httpRequest(new Map<String, Object> {
+			'method' => 'POST',
+			'url' => API_URL + '/register/tenant/' + DocHubConnectionController.ORGANIZATION_ID,
+			'authSignature' => ((Map<String, Object>)regKeyMap.get('result')).get('authSignature'),
+			'timestamp' => ((Map<String, Object>)regKeyMap.get('result')).get('timestamp')
+		});
+		
+		if (regTenantMap.get('status') == 'Success') {
+			OrgSignatureKey__c orgSignatureKey = OrgSignatureKey__c.getOrgDefaults();
+			orgSignatureKey.key__c = String.valueOf(regTenantMap.get('result'));
+			Database.upsert(orgSignatureKey, false);
 		}
-
-		this.fileLink = String.valueOf(resMap.get('result'));
-		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'ApiUrl'];
-		if (urlNameCred.size() != 0 && !String.isBlank(this.fileLink)) {
-			String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(new Map<String, Object>{ 'createdBy' => UserInfo.getName() })));
-			this.fileLink = urlNameCred[0].Endpoint + DocHubConnectionController.PROXY_TENANT + '/api/document/' + 
-				DocHubConnectionController.ORGANIZATION_ID + '/open/' + this.fileLink + '?state=' + state;
-			this.fileLink = System.EncodingUtil.urlEncode(this.fileLink, 'UTF-8');
-		}
-		if (String.isBlank(this.fileLink)) {
-			this.errorMessage = 'Sorry, something went wrong';
-			return;
-		}
+		return regTenantMap;
 	}
-
+	
+	private static Map<String, Object> httpRequest(Map<String, Object> generalData) {
+		String url = String.valueOf(generalData.get('url'));
+		String method = String.valueOf(generalData.get('method'));
+		Http h = new Http();
+		HttpRequest req = new HttpRequest();
+		req.setEndpoint(url);
+		req.setMethod(method);
+		req.setHeader('Content-Type', 'application/json');
+		
+		if (generalData.containsKey('authSignature')) {
+			String signature = DocHubConnectionController.createSignature(
+				new List<String>{
+					DocHubConnectionController.ORGANIZATION_ID,
+					'register',
+					String.valueOf(generalData.get('timestamp')) 
+				},
+				String.valueOf(generalData.get('authSignature'))
+			);
+			req.setHeader('auth-signature', signature);
+			req.setHeader('timestamp', String.valueOf(generalData.get('timestamp')));
+		}
+		
+		HttpResponse res = h.send(req);
+		String resJSON = res.getBody();
+		Map<String,Object> response = new Map<String,Object>();
+		
+		try {
+			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
+		} 
+		catch(Exception e) {
+			response = new Map<String,Object> {
+				'status' => 'Error',
+				'error' => e.getMessage()
+			};
+		}
+		return response;
+	}
+	 
 	public static void hacks() {
 		Integer i = 0;
 		i++;
