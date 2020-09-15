@@ -4,7 +4,10 @@
     <columns>NAME</columns>
     <columns>Document_Name__c</columns>
     <columns>View__c</columns>
-    <filterScope>Mine</filterScope>
+    <columns>Folder__c</columns>
+    <columns>Linked_By__c</columns>
+    <columns>Status__c</columns>
+    <filterScope>Everything</filterScope>
     <filters>
         <field>Status__c</field>
         <operation>equals</operation>

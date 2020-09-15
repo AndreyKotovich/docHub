@@ -1,16 +1,15 @@
-public with sharing class DocHubRegisterController {
-	private static final String API_URL = 'callout:ApiUrl';
+public class DocHubRegisterController {
 	
 	public static Map<String, Object> registerOrg() {
 		Map<String, Object> regKeyMap = httpRequest(new Map<String, Object> {
 			'method' => 'POST',
-			'url' => API_URL + '/register/key/' + DocHubConnectionController.ORGANIZATION_ID
+			'url' => DocHubConnectionController.API_URL + '/register/key/' + DocHubConnectionController.ORGANIZATION_ID
 		});
-		
+
 		if (regKeyMap.get('status') != 'Success') { return regKeyMap; }
 		Map<String, Object> regTenantMap = httpRequest(new Map<String, Object> {
 			'method' => 'POST',
-			'url' => API_URL + '/register/tenant/' + DocHubConnectionController.ORGANIZATION_ID,
+			'url' => DocHubConnectionController.API_URL + '/register/tenant/' + DocHubConnectionController.ORGANIZATION_ID,
 			'authSignature' => ((Map<String, Object>)regKeyMap.get('result')).get('authSignature'),
 			'timestamp' => ((Map<String, Object>)regKeyMap.get('result')).get('timestamp')
 		});
@@ -60,7 +59,7 @@ public with sharing class DocHubRegisterController {
 		}
 		return response;
 	}
-	 
+
 	public static void hacks() {
 		Integer i = 0;
 		i++;

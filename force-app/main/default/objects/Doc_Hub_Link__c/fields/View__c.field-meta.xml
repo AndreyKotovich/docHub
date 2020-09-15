@@ -2,7 +2,7 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>View__c</fullName>
     <externalId>false</externalId>
-    <formula>IF(ISPICKVAL(Status__c, &quot;Linked&quot;), HYPERLINK(&quot;/apex/DocumentViewPage?Id=&quot;&amp;Id, &quot;View&quot;, &apos;_blank&apos;), &apos;&apos;)</formula>
+    <formula>IF(ISPICKVAL(Status__c, &quot;Linked&quot;), HYPERLINK(&quot;/apex/&quot; +  $Setup.NamespaceSetting__c.Prefix__c + &quot;DocumentViewPage?Id=&quot;&amp;Id, &quot;View&quot;, &apos;_blank&apos;), &apos;&apos;)</formula>
     <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
     <label>View</label>
     <required>false</required>

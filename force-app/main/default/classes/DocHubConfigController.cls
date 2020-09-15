@@ -1,9 +1,8 @@
-public with sharing class DocHubConfigController {
+public class DocHubConfigController {
     @AuraEnabled
     public static Boolean getRegisterStatus() {
         OrgSignatureKey__c orgSignatureKey = OrgSignatureKey__c.getOrgDefaults();
-        System.debug('orgSignatureKey ' + orgSignatureKey);
-        if (!String.isBlank(orgSignatureKey.key__c)) { return false; }
+        if (!String.isBlank(orgSignatureKey.key__c)) { return true; }
         return false;
     }
 

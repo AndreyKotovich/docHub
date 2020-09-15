@@ -15,13 +15,13 @@ export default class DocHubConfig extends LightningElement {
         .then(res => {
             this.isRegisterStatus = res;
             if (this.isRegisterStatus) {
-                return Promise.resolve();
+                return Promise.resolve({ status : 'Success' });
             }
             return registerOrg();
         })
         .then(res => {
-            this.isRegisterStatus = res.status === 'Success' ? true : false;
-            this.registerMessage =  res.status === 'Error' ? `(${res.error.message})` : '';
+            this.isRegisterStatus = res && res.status && res.status === 'Success' ? true : false;
+            this.registerMessage = res && res.status && res.status === 'Error' ? `(${res.error.message})` : '';
             this.isLoading = false;
         })
         .catch(error => {

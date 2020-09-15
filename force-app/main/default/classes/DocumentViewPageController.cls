@@ -1,4 +1,4 @@
-public with sharing class DocumentViewPageController {
+public class DocumentViewPageController {
 	public String fileLink { get; set; }
 	public String errorMessage { get; set; }
 
@@ -42,7 +42,7 @@ public with sharing class DocumentViewPageController {
 		}
 
 		this.fileLink = String.valueOf(resMap.get('result'));
-		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'ApiUrl'];
+		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'DocHubUrl'];
 		if (urlNameCred.size() != 0 && !String.isBlank(this.fileLink)) {
 			String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(new Map<String, Object>{ 'createdBy' => UserInfo.getName() })));
 			this.fileLink = urlNameCred[0].Endpoint + DocHubConnectionController.PROXY_TENANT + '/api/document/' + 

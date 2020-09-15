@@ -1,9 +1,9 @@
 public class DocHubConnectionController {
 	public static final String ORGANIZATION_ID =  UserInfo.getOrganizationId();
 	public static final String PROXY_TENANT = '/proxy/tenant/' + ORGANIZATION_ID;
-	private static final String CREATED_BY =  UserInfo.getName();
-	private static final String API_URL = 'callout:ApiUrl';
+	public static final String API_URL = 'callout:' + getNamespacePrefix() + 'DocHubUrl';
 	
+	private static final String CREATED_BY =  UserInfo.getName();
 	private static final String GOOGLE_DRIVE_AUTH = PROXY_TENANT + '/auth/google/authorize';
 	private static final String CONNECTION_URL = API_URL + PROXY_TENANT + '/api/connection/' + ORGANIZATION_ID;
 	private static final String DOCUMENT_URL = API_URL + PROXY_TENANT + '/api/document/' + ORGANIZATION_ID;
@@ -18,13 +18,13 @@ public class DocHubConnectionController {
 		List<NamedCredential> urlNameCred = [
 			SELECT DeveloperName, Endpoint 
 			FROM NamedCredential 
-			WHERE DeveloperName = 'ApiUrl'
+			WHERE DeveloperName = 'DocHubUrl'
 		];
 		
 		if (urlNameCred.size() == 0) {
 			return new Map<String, Object>{
 				'Status' => 'Error',
-				'Error' => 'Not found Named Credential: ApiUrl'
+				'Error' => 'Not found Named Credential: DocHubUrl'
 			};
 		}
 		return 	new Map<String, Object>{
@@ -365,6 +365,23 @@ public class DocHubConnectionController {
 		);
 	} 
 
+	public static String getNamespacePrefix() {
+		String namespacePrefix;
+		String[] classNameParts = String.valueOf(DocHubConnectionController.class).split('\\.', 2);
+		if(classNameParts.size() > 1) {
+			Type classType = Type.forName(classNameParts[0], classNameParts[1]);
+			if(classType == DocHubConnectionController.class) {
+				namespacePrefix = classNameParts[0] + '__';
+			} else {
+				namespacePrefix = '';
+			}
+		} else {
+			namespacePrefix = '';
+		}
+		System.debug('getNamespacePrefix namespacePrefix ' + namespacePrefix);
+		return namespacePrefix; 
+	}
+
 	public static String createSignature(List<String> args, String key) {
 
 		String stringToSign = '';
@@ -379,7 +396,7 @@ public class DocHubConnectionController {
 		
 		if (String.isBlank(signKey)) {
 			OrgSignatureKey__c orgSignatureKey = OrgSignatureKey__c.getOrgDefaults();
-			signKey = orgSignatureKey != null ? orgSignatureKey.key__c : '';
+			signKey = !String.isBlank(orgSignatureKey.key__c) ? orgSignatureKey.key__c : '';
 		}
 
 		Blob sig = Crypto.generateMac('HmacSHA1', Blob.valueOf(stringToSign), Blob.valueOf(signKey));
