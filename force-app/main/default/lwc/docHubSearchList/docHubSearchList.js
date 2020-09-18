@@ -1,8 +1,7 @@
 import { LightningElement, api, track } from 'lwc';
 
-export default class DocumentList extends LightningElement {
-	
-	@track _items = [];
+export default class DocHubSearchList extends LightningElement {
+    @track _items = [];
 	@track isRefreshlist = true;
 
 	@api get items() {
@@ -17,10 +16,6 @@ export default class DocumentList extends LightningElement {
 		});
 	}
 
-	handleEventItem(e) {
-		this.dispatchEvent(new CustomEvent('eventitem', { detail: e.detail }));
-	}
-
 	handleScroll(e) {
 		if (this.isRefreshlist &&(e.target.scrollHeight - e.target.scrollTop) <=
 			this.template.querySelector('[data-id=listScroll]').offsetHeight) {
@@ -28,5 +23,4 @@ export default class DocumentList extends LightningElement {
 			this.dispatchEvent(new CustomEvent('refreshlist'));
 		} 
 	}
-
 }

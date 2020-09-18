@@ -1,16 +1,13 @@
 public class DocHubConnectionController {
-	public static final String ORGANIZATION_ID =  UserInfo.getOrganizationId();
-	public static final String PROXY_TENANT = '/proxy/tenant/' + ORGANIZATION_ID;
-	public static final String API_URL = 'callout:' + getNamespacePrefix() + 'DocHubUrl';
 	
-	private static final String CREATED_BY =  UserInfo.getName();
-	private static final String GOOGLE_DRIVE_AUTH = PROXY_TENANT + '/auth/google/authorize';
-	private static final String CONNECTION_URL = API_URL + PROXY_TENANT + '/api/connection/' + ORGANIZATION_ID;
-	private static final String DOCUMENT_URL = API_URL + PROXY_TENANT + '/api/document/' + ORGANIZATION_ID;
+	public static final String CREATED_BY =  UserInfo.getName();
+	public static final String GOOGLE_DRIVE_AUTH = DocHubHelper.PROXY_TENANT + '/auth/google/authorize';
+	public static final String CONNECTION_URL = DocHubHelper.API_URL + DocHubHelper.PROXY_TENANT + '/api/connection/' + DocHubHelper.ORGANIZATION_ID;
+	public static final String DOCUMENT_URL = DocHubHelper.API_URL + DocHubHelper.PROXY_TENANT + '/api/document/' + DocHubHelper.ORGANIZATION_ID;
 
 	@AuraEnabled
 	public static Map<String, Object> createGoogleDriveAuthURL(Map<String, Object> generalData)  {
-		generalData.put('orgId', ORGANIZATION_ID);
+		generalData.put('orgId', DocHubHelper.ORGANIZATION_ID);
 		generalData.put('createdBy', CREATED_BY);
 		generalData.put('origin', 'Salesforce');
 
@@ -276,7 +273,7 @@ public class DocHubConnectionController {
 		requestMap.put('origin', 'Salesforce');
 		String jsonRes = JSON.serialize(requestMap);
 		String timestamp = String.valueOf(Datetime.newInstance(Datetime.now().dateGMT(),Datetime.now().timeGmt()).getTime());
-		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp}, null);
+		String signature = DocHubHelper.createSignature(new List<String>{DocHubHelper.ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp}, null);
 		
 		Http h = new Http();
 		HttpRequest req = new HttpRequest();
@@ -290,7 +287,7 @@ public class DocHubConnectionController {
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
 		
-		createLog(new Map<String,String> {
+		DocHubHelper.createLog(new Map<String,String> {
 			'method' => String.valueOf(generalData.get('method')),
 			'request' => String.valueOf(req),
 			'response' => resJSON,
@@ -315,7 +312,7 @@ public class DocHubConnectionController {
 		String url = String.valueOf(generalData.get('url'));
 		DateTime dateTimeGMT = Datetime.now().dateGMT();
 		String timestamp = String.valueOf(Datetime.newInstance(Datetime.now().dateGMT(),Datetime.now().timeGmt()).getTime());
-		String signature = createSignature(new List<String>{ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp}, null);
+		String signature = DocHubHelper.createSignature(new List<String>{DocHubHelper.ORGANIZATION_ID, String.valueOf(generalData.get('method')), timestamp}, null);
 		
 		Http h = new Http();
 		HttpRequest req = new HttpRequest();
@@ -329,7 +326,7 @@ public class DocHubConnectionController {
 		String resJSON = res.getBody();
 		Map<String,Object> response = new Map<String,Object>();
 		
-		createLog(new Map<String,String> {
+		DocHubHelper.createLog(new Map<String,String> {
 			'method' => String.valueOf(generalData.get('method')),
 			'request' => String.valueOf(req),
 			'response' => resJSON,
@@ -349,61 +346,6 @@ public class DocHubConnectionController {
 		return response;
 	}
 
-	private static String getOriginUrl() {
-		String prefix = URL.getSalesforceBaseURL().toExternalForm().replace('https://', '').split('\\.')[0];
-	 	prefix = prefix.removeEnd('--c');
-		return 'https://' + prefix.toLowerCase() + '.lightning.force.com';
-	}
-
-	private static void createLog(Map<String,String> logs) {
-		insert new Doc_Hub_Log__c (
-			Date__c = Date.today(),
-			Method__c = String.valueOf(logs.get('method')),
-			Request__c = String.valueOf(logs.get('request')),
-			Response__c = String.valueOf(logs.get('response')),
-			Response_Code__c = String.valueOf(logs.get('responseCode'))
-		);
-	} 
-
-	public static String getNamespacePrefix() {
-		String namespacePrefix;
-		String[] classNameParts = String.valueOf(DocHubConnectionController.class).split('\\.', 2);
-		if(classNameParts.size() > 1) {
-			Type classType = Type.forName(classNameParts[0], classNameParts[1]);
-			if(classType == DocHubConnectionController.class) {
-				namespacePrefix = classNameParts[0] + '__';
-			} else {
-				namespacePrefix = '';
-			}
-		} else {
-			namespacePrefix = '';
-		}
-		System.debug('getNamespacePrefix namespacePrefix ' + namespacePrefix);
-		return namespacePrefix; 
-	}
-
-	public static String createSignature(List<String> args, String key) {
-
-		String stringToSign = '';
-		String signature = '';
-		String signKey = key;
-
-		for (String param : args) {
-			stringToSign += param + '-';
-		}
-		
-		stringToSign = stringToSign.left(stringToSign.length()-1);
-		
-		if (String.isBlank(signKey)) {
-			OrgSignatureKey__c orgSignatureKey = OrgSignatureKey__c.getOrgDefaults();
-			signKey = !String.isBlank(orgSignatureKey.key__c) ? orgSignatureKey.key__c : '';
-		}
-
-		Blob sig = Crypto.generateMac('HmacSHA1', Blob.valueOf(stringToSign), Blob.valueOf(signKey));
-		signature = EncodingUtil.base64Encode(sig);
-		return signature;
-	}
-	
 	public static void hacks() {
 		Integer i = 0;
 		i++;

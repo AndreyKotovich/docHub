@@ -3,13 +3,13 @@ public class DocHubRegisterController {
 	public static Map<String, Object> registerOrg() {
 		Map<String, Object> regKeyMap = httpRequest(new Map<String, Object> {
 			'method' => 'POST',
-			'url' => DocHubConnectionController.API_URL + '/register/key/' + DocHubConnectionController.ORGANIZATION_ID
+			'url' => DocHubHelper.API_URL + '/register/key/' + DocHubHelper.ORGANIZATION_ID
 		});
 
 		if (regKeyMap.get('status') != 'Success') { return regKeyMap; }
 		Map<String, Object> regTenantMap = httpRequest(new Map<String, Object> {
 			'method' => 'POST',
-			'url' => DocHubConnectionController.API_URL + '/register/tenant/' + DocHubConnectionController.ORGANIZATION_ID,
+			'url' => DocHubHelper.API_URL + '/register/tenant/' + DocHubHelper.ORGANIZATION_ID,
 			'authSignature' => ((Map<String, Object>)regKeyMap.get('result')).get('authSignature'),
 			'timestamp' => ((Map<String, Object>)regKeyMap.get('result')).get('timestamp')
 		});
@@ -32,9 +32,9 @@ public class DocHubRegisterController {
 		req.setHeader('Content-Type', 'application/json');
 		
 		if (generalData.containsKey('authSignature')) {
-			String signature = DocHubConnectionController.createSignature(
+			String signature = DocHubHelper.createSignature(
 				new List<String>{
-					DocHubConnectionController.ORGANIZATION_ID,
+					DocHubHelper.ORGANIZATION_ID,
 					'register',
 					String.valueOf(generalData.get('timestamp')) 
 				},
@@ -45,11 +45,10 @@ public class DocHubRegisterController {
 		}
 		
 		HttpResponse res = h.send(req);
-		String resJSON = res.getBody();
 		Map<String,Object> response = new Map<String,Object>();
 		
 		try {
-			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
+			response = (Map<String,Object>)JSON.deserializeUntyped(res.getBody());
 		} 
 		catch(Exception e) {
 			response = new Map<String,Object> {

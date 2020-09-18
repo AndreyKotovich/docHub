@@ -1,0 +1,17 @@
+<template>
+    <div class="slds-border_bottom">
+        <div class="slds-grid slds-gutters slds-var-m-around_xx-small">
+            <div class="slds-col slds-size_8-of-12 slds-list_inline slds-text-align_left">
+                <lightning-icon icon-name={typeIcon} size="medium" class="slds-var-m-right_small slds-text-link_reset">
+                </lightning-icon>
+                <div class="slds-truncate slds-text-link_reset">{item.Document_Name__c}</div>
+            </div>
+            <div class="slds-col slds-size_2-of-12 slds-text-align_center">
+                {item.Origin__c}
+            </div>
+            <div class="slds-col slds-size_2-of-12 slds-text-align_center">
+                <a href={item.url} target="_blank"><button class='slds-button slds-button_outline-brand'>View</button></a>
+            </div>
+        </div>
+    </div>
+</template>

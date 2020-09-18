@@ -45,8 +45,8 @@ public class DocumentViewPageController {
 		List<NamedCredential> urlNameCred = [SELECT DeveloperName, Endpoint FROM NamedCredential WHERE DeveloperName = 'DocHubUrl'];
 		if (urlNameCred.size() != 0 && !String.isBlank(this.fileLink)) {
 			String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(new Map<String, Object>{ 'createdBy' => UserInfo.getName() })));
-			this.fileLink = urlNameCred[0].Endpoint + DocHubConnectionController.PROXY_TENANT + '/api/document/' + 
-				DocHubConnectionController.ORGANIZATION_ID + '/open/' + this.fileLink + '?state=' + state;
+			this.fileLink = urlNameCred[0].Endpoint + DocHubHelper.PROXY_TENANT + '/api/document/' + 
+				DocHubHelper.ORGANIZATION_ID + '/open/' + this.fileLink + '?state=' + state;
 			this.fileLink = System.EncodingUtil.urlEncode(this.fileLink, 'UTF-8');
 		}
 		if (String.isBlank(this.fileLink)) {

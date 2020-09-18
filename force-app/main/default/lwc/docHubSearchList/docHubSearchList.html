@@ -1,0 +1,17 @@
+<template>
+	<div class="slds-text-title_caps">
+		<div class="slds-grid slds-text-body_small slds-var-m-around_x-small">
+			<div class="slds-col slds-size_8-of-12 slds-text-align_left">Name</div>
+			<div class="slds-col slds-size_2-of-12 slds-text-align_center">Origin</div>
+			<div class="slds-col slds-size_2-of-12 slds-text-align_center">View</div>
+		</div>
+	</div>
+	<div class="slds-box list" data-id="listScroll" onscroll={handleScroll}>
+		<template for:each={items} for:item="item" for:index="idx">
+			<div key={item.name}>
+				<c-doc-hub-search-item key={item.name} item={item} index={idx}>
+				</c-doc-hub-search-item>
+			</div>
+		</template>
+	</div>
+</template>

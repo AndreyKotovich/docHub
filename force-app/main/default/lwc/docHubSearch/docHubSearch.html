@@ -1,0 +1,44 @@
+<template>
+    <div if:true={isLoading}>
+        <lightning-spinner size="medium" variant="brand"></lightning-spinner>
+    </div>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-standard-search" title="Doc Hub Config">
+                        <svg class="slds-icon slds-icon_large" aria-hidden="true">
+                            <use
+                                xlink:href="/apexpages/slds/latest/assets/icons/standard-sprite/svg/symbols.svg#search">
+                            </use>
+                        </svg>
+                        <span class="slds-assistive-text">Doc Hub Search</span>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h1 class="slds-card__header-title">
+                        <span>Doc Hub Search</span>
+                    </h1>
+                </div>
+            </header>
+        </div>
+    </article>
+
+    <div class="slds-var-m-bottom_medium"></div>
+    <div class="slds-box slds-color__background_gray-1 slds-text-align_center">
+        <div onkeyup={handleKeyUp}>
+            <div class="slds-form-element__control slds-input-has-icon slds-input-has-icon_left">
+                <svg class="slds-icon slds-input__icon slds-input__icon_left slds-icon-text-default"
+                    aria-hidden="true">
+                    <use
+                        xlink:href="/apexpages/slds/latest/assets/icons/utility-sprite/svg/symbols.svg#search">
+                    </use>
+                </svg>
+                <input type="text" id="text-input-id-1" class="slds-input" />
+            </div>
+        </div>
+
+        <c-doc-hub-search-list items={curDocumentList} onrefreshlist={refreshListDocument}></c-doc-hub-search-list>
+    </div>
+    
+</template>

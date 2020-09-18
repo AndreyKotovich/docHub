@@ -320,12 +320,12 @@ export default class docHubConnections extends LightningElement {
 
                 documentInfo.publish.forEach(el => {
                     let autoPub = el.reason === 'auto' ? ` automatically when ${el.note}` : '';
-                    let name = 'Published' + autoPub + ' by ' + el.user + ' on ' + this.formatDate(el.date);
+                    let name = `Published ${autoPub} by ${el.user} on ${this.formatDate(el.date)}`;
                     this.publishList.push({ id: el.id, name: name });
                 });
 
                 documentInfo.access.forEach(el => {
-                    let name = el.user + ' on ' + this.formatDate(el.date);
+                    let name = `${el.user} on ${this.formatDate(el.date)}`;
                     this.accessList.push({ id: el.id, name: name });
                 });
 
@@ -493,7 +493,7 @@ export default class docHubConnections extends LightningElement {
         this.openFolder({ id: folderId }, false);
     }
 
-    refreshListDocumet() {
+    refreshListDocument() {
         if (this.nextPageToken !== '') {
             this._getConnectionDocumentList(this.nextPageToken)
                 .then((res) => {
@@ -508,7 +508,7 @@ export default class docHubConnections extends LightningElement {
 
     formatDate(date) {
         let publishDate = new Date(date)
-        return publishDate.getMonth() + '/' + publishDate.getDate() + '/' + publishDate.getFullYear() + ' ' + this.formatAMPM(publishDate)
+        return `${publishDate.getMonth()}/${publishDate.getDate()}/${publishDate.getFullYear()} ${this.formatAMPM(publishDate)}`;
     }
 
     formatAMPM(date) {
