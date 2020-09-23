@@ -35,13 +35,12 @@ export default class DocHubSearch extends LightningElement {
                 return;
             }
             this.isLoading = true;
-            
+
             searchDocuments({searchKey: this.searchKey})
                 .then((res) => {
                     // console.log('searchDocuments ', res.status);
                     // console.log('searchDocuments ', res.result);
                     this.documentList = JSON.parse(res.result);
-                    this.documentList.forEach((e) => e.url = this.getUrl(e.Id));
                     this.originDocumentList = this.documentList.splice();
                     this.curDocumentList = this.documentList.splice(0, 20);
                     //console.log('searchDocuments documentList ', JSON.parse(JSON.stringify(this.documentList)));
@@ -54,15 +53,11 @@ export default class DocHubSearch extends LightningElement {
         }
     }
 
-    getUrl(docId) {
-        return `/apex/${this.prefix}DocumentViewPage?Id=${docId}`;
-    }
-
     refreshListDocument() {
         if (this.documentList.length > 0) {
             this.isLoading = true;
             this.curDocumentList = [...this.curDocumentList, ...this.documentList.splice(0, 20)];
             this.isLoading = false;
-        }        
+        }
     }
 }

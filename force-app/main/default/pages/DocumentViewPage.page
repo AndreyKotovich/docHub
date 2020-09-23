@@ -1,5 +1,5 @@
-<apex:page controller="DocumentViewPageController" action="{!loadDocument}">
-    <apex:slds/>
+<apex:page controller="DocumentViewPageController" action="{!loadDocument}" showHeader="false" sidebar="false">
+    <apex:slds />
     <div style="{!IF(isError, 'display:block', 'display:none')}">
         <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert" xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink">

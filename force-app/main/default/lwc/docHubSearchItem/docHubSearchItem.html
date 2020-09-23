@@ -1,16 +1,24 @@
 <template>
-    <div class="slds-border_bottom">
+    <div class="slds-border_bottom" data-id={item.id}>
         <div class="slds-grid slds-gutters slds-var-m-around_xx-small">
-            <div class="slds-col slds-size_8-of-12 slds-list_inline slds-text-align_left">
-                <lightning-icon icon-name={typeIcon} size="medium" class="slds-var-m-right_small slds-text-link_reset">
-                </lightning-icon>
-                <div class="slds-truncate slds-text-link_reset">{item.Document_Name__c}</div>
+            <div class="slds-col slds-size_8-of-12 slds-text-align_left">
+                <div class="slds-col slds-size_12-of-12 slds-list_inline">
+                    <lightning-icon icon-name={typeIcon} size="medium" class="slds-var-m-right_small">
+                    </lightning-icon>
+                    <div class="slds-truncate" data-id="item-name"></div>
+                </div>
+                <template if:true={areFragmentsFound}>
+                    <div class="slds-col slds-p-top_small slds-size_12-of-12 slds-list_inline">
+                        <div class="slds-col slds-p-left_none slds-size_2-of-12"><i>Search results:</i></div>
+                        <div class="slds-col slds-size_10-of-12" data-id="item-hits"></div>
+                    </div>
+                </template>
             </div>
             <div class="slds-col slds-size_2-of-12 slds-text-align_center">
-                {item.Origin__c}
+                {item.origin}
             </div>
             <div class="slds-col slds-size_2-of-12 slds-text-align_center">
-                <a href={item.url} target="_blank"><button class='slds-button slds-button_outline-brand'>View</button></a>
+                <a class=" slds-text-link_reset" href={item.url} target="_blank"><button class='slds-button slds-button_outline-brand'>View</button></a>
             </div>
         </div>
     </div>
