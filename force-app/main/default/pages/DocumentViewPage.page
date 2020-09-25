@@ -13,7 +13,7 @@
         </div>
     </div>
     <div style="{!IF(isFileLink, 'display:block', 'display:none')}">
-        <iframe src="{!URLFOR($Resource.pdfjs, '/web/viewer.html')}?file={!fileLink}" style="width: 100vw; height: 100vh;border: none;"
+        <iframe src="{!URLFOR(IF(preventCopyStatus, $Resource.pdfjsrestricted, $Resource.pdfjs), '/web/viewer.html')}?file={!fileLink}" style="width: 100vw; height: 100vh;border: none;"
         />
     </div>
 </apex:page>

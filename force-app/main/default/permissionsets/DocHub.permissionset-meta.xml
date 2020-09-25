@@ -46,6 +46,11 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
+        <editable>true</editable>
+        <field>Doc_Hub_Link__c.Prevent_Copying__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>false</editable>
         <field>Doc_Hub_Link__c.Published_Date__c</field>
         <readable>true</readable>
