@@ -61,7 +61,7 @@ public class DocHubConnectionControllerTest {
 	}
 
 	@isTest static void unlinkDocumentTestFail() {
-		Map<String, Object> resMap = DocHubConnectionController.unlinkDocument('0692w000003vyCOAAY', 'testReason');
+		Map<String, Object> resMap = DocHubConnectionController.unlinkDocument(null, 'testReason');
 		System.assertEquals('Error', resMap.get('status'));
 	}
 
