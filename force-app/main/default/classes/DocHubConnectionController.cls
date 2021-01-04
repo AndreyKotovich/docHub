@@ -6,7 +6,7 @@ public class DocHubConnectionController {
 	public static final String DOCUMENT_URL = DocHubHelper.API_URL + DocHubHelper.PROXY_TENANT + '/api/document/' + DocHubHelper.ORGANIZATION_ID;
 
 	@AuraEnabled
-	public static Map<String, Object> createGoogleDriveAuthURL(Map<String, Object> generalData)  {
+	public static Map<String, Object> createGoogleDriveAuthURL(Map<String, Object> generalData) {
 		generalData.put('orgId', DocHubHelper.ORGANIZATION_ID);
 		generalData.put('createdBy', CREATED_BY);
 		generalData.put('origin', 'Salesforce');
@@ -20,13 +20,13 @@ public class DocHubConnectionController {
 		
 		if (urlNameCred.size() == 0) {
 			return new Map<String, Object>{
-				'Status' => 'Error',
-				'Error' => 'Not found Named Credential: DocHubUrl'
+				'status' => 'Error',
+				'error' => 'Not found Named Credential: DocHubUrl'
 			};
 		}
-		return 	new Map<String, Object>{
-			'Status' => 'Success',
-			'Url' => urlNameCred[0].Endpoint + GOOGLE_DRIVE_AUTH + '?state='+state
+		return new Map<String, Object>{
+			'status' => 'Success',
+			'url' => urlNameCred[0].Endpoint + GOOGLE_DRIVE_AUTH + '?state=' + state
 		};
 	}
 	
@@ -41,8 +41,15 @@ public class DocHubConnectionController {
 	
 	@AuraEnabled
 	public static Map<String, Object> unlinkDocument(String Id, String reason) {
-		update new Doc_Hub_Link__c(Id = Id, Status__c = 'Unlinked', Reason__c = reason);
 		
+		try {
+			update new Doc_Hub_Link__c(Id = Id, Status__c = 'Unlinked', Reason__c = reason);
+		} catch (Exception e) {
+			return new Map<String, Object> {
+				'status' => 'Error',
+				'message' => e.getMessage()
+			};
+		}
 		return new Map<String, Object> {
 			'status' => 'Success',
 			'message' => 'Record updated'
@@ -97,31 +104,24 @@ public class DocHubConnectionController {
 	@AuraEnabled
 	public static Map<String, Object> publishDocument(String recordId) {
 		if (!String.isBlank(recordId)) {
-			Doc_Hub_Link__c dhl = [
+			List<Doc_Hub_Link__c> dhls = [
 				SELECT 
 					Id, Connection_Id__c, Origin_Id__c, Status__c 
 				FROM Doc_Hub_Link__c 
 				WHERE Id = :recordId
 			];
 
-			if (dhl == null){
-				//error
+			if (dhls.size() == 0 || dhls[0].Status__c != 'Linked'){
+				String errorMsg = dhls.size() == 0 ? 'Record is not found' : 'Record is not linked';
 				return new Map<String, Object> {
 					'status' => 'error',
-					'message' => 'Record is not found'
-				};
-			}
-
-			if (dhl.Status__c != 'Linked'){
-				//error
-				return new Map<String, Object> {
-					'status' => 'error',
-					'message' => 'Record is not linked'
+					'message' => errorMsg,
+					'error' => new Map<String, Object> { 'message' => errorMsg } 
 				};
 			}
 
 			Map<String, Object> resDocumentLink = postHttpRequest(new Map<String, Object> {
-				'url' => DOCUMENT_URL + '/' + String.valueOf(dhl.Connection_Id__c) + '/publish/' + dhl.Origin_Id__c,
+				'url' => DOCUMENT_URL + '/' + String.valueOf(dhls[0].Connection_Id__c) + '/publish/' + dhls[0].Origin_Id__c,
 				'method' => 'documentpublish'
 			});
 
@@ -129,20 +129,19 @@ public class DocHubConnectionController {
 			
 				String publishedDate = String.valueOf(((Map<String, Object>)resDocumentLink.get('result')).get('publishedDate'));
 				Doc_Hub_Link__c docHub = new Doc_Hub_Link__c(
-					Id = dhl.Id,
+					Id = dhls[0].Id,
 					Published_Date__c = Datetime.valueOf(publishedDate.replace('T',' '))
 				);
-				//Database.upsert( new List<Doc_Hub_Link__c> { docHub } , Doc_Hub_Link__c.Fields.Origin_Id__c, false);
-				Database.update( new List<Doc_Hub_Link__c> { docHub } , false);
+				Database.update(new List<Doc_Hub_Link__c> { docHub } , false);
 				
 				((Map<String, Object>)resDocumentLink.get('result')).put('sfid', docHub.id);
 			} 
 			return resDocumentLink;
 		}
-		//error
 		return new Map<String, Object> {
 			'status' => 'error',
-			'message' => 'Record id is not found'
+			'message' => 'Record id is not found',
+			'error' => new Map<String, Object> { 'message' => 'Record id is not found' } 
 		};
 	}
 	
@@ -197,9 +196,7 @@ public class DocHubConnectionController {
 			'pageSize' => 20 
 		};
 
-		if (!String.isBlank(folder)) {
-			stateMap.put('folder', folder);
-		}
+		if (!String.isBlank(folder)) { stateMap.put('folder', folder); }
 
 		String state = EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(stateMap)));
 		
@@ -216,8 +213,9 @@ public class DocHubConnectionController {
 		}
 		
 		Map<String, Object> resMap = (Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(resGetMap.get('result')));
-
+		
 		List<Object> docList = (List<Object>)JSON.deserializeUntyped(JSON.serialize(resMap.get('files')));
+
 		Set<String> docIds = new Set<String>();                                           
 		for(Object doc : docList) {
 			if (!String.isBlank(String.valueOf(((Map<String,Object>)doc).get('id')))) {
@@ -254,15 +252,20 @@ public class DocHubConnectionController {
 
 	@AuraEnabled
 	public static String readJsonFileForGoogleServiceAccount(Id idContentDocument) {
-		ContentVersion objVersion = [SELECT Id, VersionData FROM ContentVersion WHERE ContentDocumentId =:idContentDocument];
+		List<ContentVersion> objVersion = [SELECT Id, VersionData 
+										   FROM ContentVersion 
+										   WHERE ContentDocumentId =:idContentDocument 
+										   AND FileType = 'JSON'
+										   LIMIT 1];
 		Map<String, Object> convertJsonToMap = new Map <string, object>();
+		if (objVersion.size() == 0) { return null; }
 		try {
-			convertJsonToMap = (Map<String,Object>)JSON.deserializeUntyped(objVersion.VersionData.toString());
+			convertJsonToMap = (Map<String,Object>)JSON.deserializeUntyped(objVersion[0].VersionData.toString());
 		}
 		catch(Exception e) {
 			System.debug('The following exception has occurred: ' + e.getMessage() +' on line number: '+e.getLineNumber());
 		}
-			
+		
 		return EncodingUtil.Base64Encode(Blob.valueOf(JSON.serialize(convertJsonToMap)));
 	}
 
@@ -286,28 +289,37 @@ public class DocHubConnectionController {
 		req.setBody(jsonRes);
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
-		
+		if (res.getStatusCode() == 400) { resJSON = 'Sorry, something went wrong'; }
 		DocHubHelper.createLog(new Map<String,String> {
 			'method' => String.valueOf(generalData.get('method')),
 			'request' => String.valueOf(req),
 			'response' => resJSON,
 			'responseCode' => String.valueOf(res.getStatusCode())
 		});
+		
+		if (res.getStatusCode() == 400) {
+			return new Map<String,Object> {
+				'status' => 'Error',
+				'message' => resJSON,
+				'error' => new Map<String,Object> { 'message' => resJSON }
+			};
+		}
 
-		Map<String,Object> response = new Map<String,Object>();
+		Map<String,Object> resMap = new Map<String,Object>();
 		try {
-			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
+			resMap = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
 		} 
 		catch(Exception e) {
 			System.debug('The following exception has occurred: ' + e.getMessage() +' on line number: ' + e.getLineNumber());
-			response = new Map<String,Object> {
-				'Status' => 'Error',
-				'Error' => e.getMessage()
+			resMap = new Map<String,Object> {
+				'status' => 'Error',
+				'message' => e.getMessage(),
+				'error' => new Map<String,Object> { 'message' => e.getMessage() }
 			};
 		}
-		return response;
+		return resMap;
 	}
-
+	
 	private static Map<String, Object> getHttpRequest(Map<String, Object> generalData) {
 		String url = String.valueOf(generalData.get('url'));
 		DateTime dateTimeGMT = Datetime.now().dateGMT();
@@ -324,7 +336,6 @@ public class DocHubConnectionController {
 		
 		HttpResponse res = h.send(req);
 		String resJSON = res.getBody();
-		Map<String,Object> response = new Map<String,Object>();
 		
 		DocHubHelper.createLog(new Map<String,String> {
 			'method' => String.valueOf(generalData.get('method')),
@@ -332,1022 +343,20 @@ public class DocHubConnectionController {
 			'response' => resJSON,
 			'responseCode' => String.valueOf(res.getStatusCode())
 		});
-
+		
+		Map<String,Object> resMap = new Map<String,Object>();
+		
 		try {
-			response = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
+			resMap = (Map<String,Object>)JSON.deserializeUntyped(resJSON);
 		} 
 		catch(Exception e) {
-			response = new Map<String,Object> {
-				'Status' => 'Error',
-				'Error' => e.getMessage()
+			resMap = new Map<String,Object> {
+				'status' => 'Error',
+				'message' => e.getMessage(),
+				'error' => new Map<String,Object> { 'message' => e.getMessage() }
 			};
 		}
-
-		return response;
+		return resMap;
 	}
 
-	public static void hacks() {
-		Integer i = 0;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-		i++;
-	}
 }

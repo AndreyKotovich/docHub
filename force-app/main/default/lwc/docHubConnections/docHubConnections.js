@@ -162,7 +162,7 @@ export default class docHubConnections extends LightningElement {
     onAddConnectionGoogleAuth2() {
         createGoogleDriveAuthURL({ generalData: this.clientOptionsGoogleOAuth2 })
             .then(res => {
-                window.location.href = res.Url;
+                window.location.href = res.url;
             })
             .catch(error => {
                 console.log('Error', JSON.parse(JSON.stringify(error)));

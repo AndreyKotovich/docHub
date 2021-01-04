@@ -131,4 +131,8 @@
         <tab>Doc_Hub_Log__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
+    <tabSettings>
+        <tab>Doc_Hub_Search</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
 </PermissionSet>
